@@ -36,15 +36,57 @@ def get_host_url():
     return row['host_url'] if row and row['host_url'] else request.host_url.rstrip('/')
 
 
+# -----------------------------------------------------------------------------
+# DIŞ SİPARİŞ QR AYARI: HANGİ KAYIT OLURSA OLSUN /dis/menu'ye SABİTLE
+# -----------------------------------------------------------------------------
+PUBLIC_MENU_FALLBACK = os.environ.get(
+    "PUBLIC_MENU_URL",
+    "https://kestanelikailebahcesi.onrender.com/dis/menu"
+)
+
+def _normalize_public_menu_url(raw_url):
+    raw_url = (raw_url or "").strip()
+    if not raw_url:
+        return PUBLIC_MENU_FALLBACK
+
+    # Şema yoksa ekle
+    if "://" not in raw_url:
+        raw_url = "https://" + raw_url.lstrip("/")
+
+    parsed = urlparse(raw_url)
+
+    # Domain yoksa fallback
+    if not parsed.netloc:
+        return PUBLIC_MENU_FALLBACK
+
+    # Her şeyi sil, yalnızca doğru hedefi bırak
+    return urlunparse((
+        parsed.scheme if parsed.scheme in ("http", "https") else "https",
+        parsed.netloc,
+        "/dis/menu",
+        "",
+        "",
+        ""
+    )).rstrip("/")
+
+
 def get_public_menu_url():
+    """
+    QR kodun hedefi her durumda dış menü olsun.
+    settings tablosunda yanlışlıkla /login, /qr/dis, / ya da başka bir şey
+    kayıtlı olsa bile sonuç daima /dis/menu olur.
+    """
     conn = get_db()
     c = conn.cursor()
-    c.execute("SELECT public_menu_url FROM settings WHERE id=1")
+    c.execute("SELECT public_menu_url, host_url FROM settings WHERE id=1")
     row = c.fetchone()
     conn.close()
-    if row and row["public_menu_url"]:
-        return row["public_menu_url"]
-    return "https://kestanelikcaybahcem.onrender.com/dis/menu"
+
+    raw = ""
+    if row:
+        raw = row["public_menu_url"] or row["host_url"] or ""
+
+    return _normalize_public_menu_url(raw)
 
 def rows_to_dicts(rows):
     return [dict(row) for row in rows]
@@ -258,9 +300,14 @@ def ensure_menu_translations():
 
 def _build_dis_qr_bytes():
     target = get_public_menu_url()
-    qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_M, box_size=10, border=4)
+    qr = qrcode.QRCode(
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=10,
+        border=4
+    )
     qr.add_data(target)
     qr.make(fit=True)
+
     img = qr.make_image(fill_color="black", back_color="white")
     buf = BytesIO()
     img.save(buf, format="PNG")
