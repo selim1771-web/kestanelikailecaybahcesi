@@ -1426,6 +1426,9 @@ def api_dis_siparis():
             continue
         c.execute("INSERT INTO dis_siparis_urunler (dis_siparis_id, urun_id, adet, fiyat) VALUES (?, ?, ?, ?)",
                   (dis_siparis_id, urun_id, adet, float(urun['fiyat'])))
+        c.execute('''CREATE TABLE IF NOT EXISTS masalar (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ... )''')
         c.execute("UPDATE urunler SET stok = stok - ? WHERE id=?", (adet, urun_id))
         c.execute("INSERT INTO stok_hareket (urun_id, adet, tip, aciklama) VALUES (?, ?, 'cikis', ?)",
                   (urun_id, adet, f'Dış sipariş #{dis_siparis_id}'))
