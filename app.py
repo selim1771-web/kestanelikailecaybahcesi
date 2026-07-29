@@ -4,6 +4,7 @@ import re
 from io import BytesIO
 import qrcode
 from datetime import datetime, timedelta
+from urllib.parse import urlparse, urlunparse
 from database import get_db, init_db
 
 app = Flask(__name__)
@@ -36,57 +37,42 @@ def get_host_url():
     return row['host_url'] if row and row['host_url'] else request.host_url.rstrip('/')
 
 
-# -----------------------------------------------------------------------------
-# DIŞ SİPARİŞ QR AYARI: HANGİ KAYIT OLURSA OLSUN /dis/menu'ye SABİTLE
-# -----------------------------------------------------------------------------
-PUBLIC_MENU_FALLBACK = os.environ.get(
-    "PUBLIC_MENU_URL",
-    "https://kestanelikailebahcesi.onrender.com/dis/menu"
-)
-
 def _normalize_public_menu_url(raw_url):
+    """Public QR linkini her durumda /dis/menu adresine sabitler."""
+    fallback = "https://kestanelikcaybahcem.onrender.com/dis/menu"
     raw_url = (raw_url or "").strip()
     if not raw_url:
-        return PUBLIC_MENU_FALLBACK
-
-    # Şema yoksa ekle
-    if "://" not in raw_url:
-        raw_url = "https://" + raw_url.lstrip("/")
+        return fallback
 
     parsed = urlparse(raw_url)
+    # Şema yoksa kullanıcı muhtemelen sadece host girmiş olabilir.
+    if not parsed.scheme:
+        # Örn: 192.168.1.102:8000 -> http://192.168.1.102:8000/dis/menu
+        parsed = urlparse("http://" + raw_url)
 
-    # Domain yoksa fallback
-    if not parsed.netloc:
-        return PUBLIC_MENU_FALLBACK
+    path = (parsed.path or "").rstrip('/')
+    if path != "/dis/menu":
+        path = "/dis/menu"
 
-    # Her şeyi sil, yalnızca doğru hedefi bırak
-    return urlunparse((
-        parsed.scheme if parsed.scheme in ("http", "https") else "https",
+    normalized = urlunparse((
+        parsed.scheme,
         parsed.netloc,
-        "/dis/menu",
-        "",
-        "",
-        ""
-    )).rstrip("/")
+        path,
+        parsed.params,
+        parsed.query,
+        parsed.fragment
+    )).rstrip('/')
+    return normalized or fallback
 
 
 def get_public_menu_url():
-    """
-    QR kodun hedefi her durumda dış menü olsun.
-    settings tablosunda yanlışlıkla /login, /qr/dis, / ya da başka bir şey
-    kayıtlı olsa bile sonuç daima /dis/menu olur.
-    """
     conn = get_db()
     c = conn.cursor()
-    c.execute("SELECT public_menu_url, host_url FROM settings WHERE id=1")
+    c.execute("SELECT public_menu_url FROM settings WHERE id=1")
     row = c.fetchone()
     conn.close()
-
-    raw = ""
-    if row:
-        raw = row["public_menu_url"] or row["host_url"] or ""
-
-    return _normalize_public_menu_url(raw)
+    stored = row["public_menu_url"] if row and row["public_menu_url"] else ""
+    return _normalize_public_menu_url(stored)
 
 def rows_to_dicts(rows):
     return [dict(row) for row in rows]
@@ -300,38 +286,14 @@ def ensure_menu_translations():
 
 def _build_dis_qr_bytes():
     target = get_public_menu_url()
-    qr = qrcode.QRCode(
-        error_correction=qrcode.constants.ERROR_CORRECT_M,
-        box_size=10,
-        border=4
-    )
+    qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_M, box_size=10, border=4)
     qr.add_data(target)
     qr.make(fit=True)
-
     img = qr.make_image(fill_color="black", back_color="white")
     buf = BytesIO()
     img.save(buf, format="PNG")
     return buf.getvalue()
 
-
-
-def ensure_satis_hareketleri_table():
-    conn = get_db()
-    c = conn.cursor()
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS satis_hareketleri (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            kanal TEXT NOT NULL,
-            kaynak_turu TEXT NOT NULL,
-            kaynak_id INTEGER NOT NULL,
-            tutar REAL NOT NULL,
-            odeme_tipi TEXT DEFAULT 'nakit',
-            aciklama TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    conn.commit()
-    conn.close()
 
 @app.route('/')
 def index():
@@ -470,48 +432,27 @@ def masa_detay(masa_id):
 
 @app.route('/api/masa/<int:masa_id>/odeme', methods=['POST'])
 def masa_odeme(masa_id):
-    data = request.get_json() or {}
-    odeme_tipi = data.get('odeme_tipi', 'nakit')
+    data = request.get_json()
+    odeme_tipi = data.get('odeme_tipi')
     veresiye_id = data.get('veresiye_id')
-
-    ensure_satis_hareketleri_table()
-
     conn = get_db()
     c = conn.cursor()
     c.execute("SELECT COALESCE(SUM(fiyat * adet), 0) as toplam FROM siparisler WHERE masa_id=? AND odeme_tipi=''", (masa_id,))
     toplam = c.fetchone()['toplam']
-
     if odeme_tipi == 'veresiye' and veresiye_id:
         c.execute("UPDATE veresiye SET toplam_borc = toplam_borc + ? WHERE id=?", (toplam, veresiye_id))
-        c.execute(
-            "INSERT INTO veresiye_hareket (veresiye_id, tutar, tip, aciklama) VALUES (?, ?, 'borc', ?)",
-            (veresiye_id, toplam, 'Masa odemesi')
-        )
-
+        c.execute("INSERT INTO veresiye_hareket (veresiye_id, tutar, tip, aciklama) VALUES (?, ?, 'borc', ?)",
+                 (veresiye_id, toplam, "Masa odemesi"))
     c.execute("UPDATE siparisler SET odeme_tipi=? WHERE masa_id=? AND odeme_tipi=''", (odeme_tipi, masa_id))
     c.execute("UPDATE masalar SET durum='bos' WHERE id=?", (masa_id,))
-
     if toplam > 0:
-        c.execute(
-            "INSERT INTO kasa (tip, tutar, aciklama, odeme_tipi, garson_id) VALUES (?, ?, ?, ?, ?)",
-            ('gelir', toplam, f'Masa {masa_id} odeme', odeme_tipi, session['user_id'])
-        )
-        c.execute(
-            """
-            INSERT INTO satis_hareketleri (kanal, kaynak_turu, kaynak_id, tutar, odeme_tipi, aciklama)
-            VALUES ('ic', 'masa', ?, ?, ?, ?)
-            """,
-            (masa_id, toplam, odeme_tipi, f'Masa {masa_id} odeme')
-        )
+        c.execute("INSERT INTO kasa (tip, tutar, aciklama, odeme_tipi, garson_id) VALUES (?, ?, ?, ?, ?)",
+                 ('gelir', toplam, "Masa {} odeme".format(masa_id), odeme_tipi, session['user_id']))
         if odeme_tipi == 'nakit':
-            c.execute(
-                """
+            c.execute("""
                 INSERT INTO emanet_tahsilatlar (kaynak_turu, kaynak_id, tutar, odeme_tipi, durum, aciklama, teslim_eden)
                 VALUES ('masa', ?, ?, 'nakit', 'beklemede', ?, ?)
-                """,
-                (masa_id, toplam, f'Masa {masa_id} nakit tahsilat', session.get('username', ''))
-            )
-
+            """, (masa_id, toplam, f"Masa {masa_id} nakit tahsilat", session.get('username', '')))
     conn.commit()
     conn.close()
     return jsonify({'success': True, 'toplam': toplam})
@@ -891,70 +832,17 @@ def veresiye_hareketler(id):
 def raporlar():
     if session.get('role') != 'admin':
         return redirect(url_for('dashboard'))
-
-    ensure_satis_hareketleri_table()
-
     baslangic = request.args.get('baslangic', (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d'))
     bitis = request.args.get('bitis', datetime.now().strftime('%Y-%m-%d'))
     garson_id = request.args.get('garson_id', '')
     conn = get_db()
     c = conn.cursor()
-
     c.execute("SELECT * FROM users WHERE role='garson' AND aktif=1 ORDER BY ad_soyad")
     garsonlar = c.fetchall()
-
-    # İç / dış satış özetleri
-    c.execute("""
-        SELECT
-            date(created_at) as gun,
-            SUM(tutar) as toplam,
-            SUM(CASE WHEN kanal='ic' THEN tutar ELSE 0 END) as ic_toplam,
-            SUM(CASE WHEN kanal='dis' THEN tutar ELSE 0 END) as dis_toplam,
-            COUNT(*) as adet
-        FROM satis_hareketleri
-        WHERE date(created_at) BETWEEN ? AND ?
-        GROUP BY date(created_at)
-        ORDER BY gun
-    """, (baslangic, bitis))
+    c.execute("SELECT date(created_at) as gun, SUM(tutar) as toplam, COUNT(*) as adet FROM kasa WHERE tip='gelir' AND date(created_at) BETWEEN ? AND ? GROUP BY date(created_at) ORDER BY gun", (baslangic, bitis))
     gunluk_satis = c.fetchall()
-
-    c.execute("SELECT COALESCE(SUM(tutar), 0) as toplam FROM satis_hareketleri WHERE kanal='ic' AND date(created_at) BETWEEN ? AND ?", (baslangic, bitis))
-    toplam_ic_satis = c.fetchone()['toplam']
-
-    c.execute("SELECT COALESCE(SUM(tutar), 0) as toplam FROM satis_hareketleri WHERE kanal='dis' AND date(created_at) BETWEEN ? AND ?", (baslangic, bitis))
-    toplam_dis_satis = c.fetchone()['toplam']
-
-    toplam_satis = float(toplam_ic_satis) + float(toplam_dis_satis)
-
-    # Kasa özeti (genel nakit akışı)
-    c.execute("SELECT COALESCE(SUM(tutar), 0) as toplam FROM kasa WHERE tip='gelir' AND date(created_at) BETWEEN ? AND ?", (baslangic, bitis))
-    toplam_gelir = c.fetchone()['toplam']
-    c.execute("SELECT COALESCE(SUM(tutar), 0) as toplam FROM kasa WHERE tip='gider' AND date(created_at) BETWEEN ? AND ?", (baslangic, bitis))
-    toplam_gider = c.fetchone()['toplam']
-
-    # İç + dış en çok satan ürünler
-    c.execute("""
-        SELECT ad, SUM(adet) as adet, SUM(toplam) as toplam
-        FROM (
-            SELECT u.ad as ad, s.adet as adet, (s.fiyat * s.adet) as toplam
-            FROM siparisler s
-            JOIN urunler u ON s.urun_id=u.id
-            WHERE date(s.created_at) BETWEEN ? AND ? AND s.odeme_tipi!=''
-
-            UNION ALL
-
-            SELECT u.ad as ad, ds.adet as adet, (ds.fiyat * ds.adet) as toplam
-            FROM dis_siparis_urunler ds
-            JOIN urunler u ON ds.urun_id=u.id
-            JOIN dis_siparisler d ON ds.dis_siparis_id=d.id
-            WHERE date(d.created_at) BETWEEN ? AND ?
-        ) x
-        GROUP BY ad
-        ORDER BY adet DESC
-        LIMIT 10
-    """, (baslangic, bitis, baslangic, bitis))
+    c.execute("SELECT u.ad, SUM(s.adet) as adet, SUM(s.fiyat * s.adet) as toplam FROM siparisler s JOIN urunler u ON s.urun_id=u.id WHERE date(s.created_at) BETWEEN ? AND ? AND s.odeme_tipi!='' GROUP BY s.urun_id ORDER BY adet DESC LIMIT 10", (baslangic, bitis))
     populer_urunler = c.fetchall()
-
     query = "SELECT u.ad_soyad, COUNT(*) as siparis_sayisi, SUM(s.fiyat * s.adet) as toplam_satis, AVG(s.fiyat * s.adet) as ortalama FROM siparisler s JOIN users u ON s.garson_id=u.id WHERE date(s.created_at) BETWEEN ? AND ? AND s.odeme_tipi!=''"
     params = [baslangic, bitis]
     if garson_id:
@@ -963,7 +851,6 @@ def raporlar():
     query += " GROUP BY s.garson_id ORDER BY toplam_satis DESC"
     c.execute(query, params)
     garson_performans = c.fetchall()
-
     query2 = "SELECT s.id, date(s.created_at) as tarih, m.masa_no, u.ad_soyad as garson_adi, SUM(s.fiyat * s.adet) as tutar, s.odeme_tipi FROM siparisler s JOIN masalar m ON s.masa_id=m.id JOIN users u ON s.garson_id=u.id WHERE date(s.created_at) BETWEEN ? AND ? AND s.odeme_tipi!=''"
     params2 = [baslangic, bitis]
     if garson_id:
@@ -972,35 +859,13 @@ def raporlar():
     query2 += " GROUP BY s.masa_id, date(s.created_at) ORDER BY s.created_at DESC"
     c.execute(query2, params2)
     detayli_siparis = c.fetchall()
-
-    # Dış sipariş detayları da ayrı kalsın
-    c.execute("""
-        SELECT d.id, date(d.created_at) as tarih, d.musteri_ad_soyad, d.telefon, d.teslim_adres,
-               d.odeme_tipi, d.toplam_tutar, d.durum, d.tahsilat_durumu
-        FROM dis_siparisler d
-        WHERE date(d.created_at) BETWEEN ? AND ?
-        ORDER BY d.created_at DESC
-    """, (baslangic, bitis))
-    dis_detayli_siparis = c.fetchall()
-
+    c.execute("SELECT COALESCE(SUM(tutar), 0) as toplam FROM kasa WHERE tip='gelir' AND date(created_at) BETWEEN ? AND ?", (baslangic, bitis))
+    toplam_gelir = c.fetchone()['toplam']
     conn.close()
-    return render_template(
-        'raporlar.html',
-        gunluk_satis=gunluk_satis,
-        populer_urunler=populer_urunler,
-        garson_performans=garson_performans,
-        detayli_siparis=detayli_siparis,
-        dis_detayli_siparis=dis_detayli_siparis,
-        garsonlar=garsonlar,
-        baslangic=baslangic,
-        bitis=bitis,
-        garson_id=garson_id,
-        toplam_gelir=toplam_gelir,
-        toplam_gider=toplam_gider,
-        toplam_ic_satis=toplam_ic_satis,
-        toplam_dis_satis=toplam_dis_satis,
-        toplam_satis=toplam_satis
-    )
+    return render_template('raporlar.html', gunluk_satis=gunluk_satis, populer_urunler=populer_urunler,
+                           garson_performans=garson_performans, detayli_siparis=detayli_siparis,
+                           garsonlar=garsonlar, baslangic=baslangic, bitis=bitis,
+                           garson_id=garson_id, toplam_gelir=toplam_gelir)
 
 # ========== AYARLAR ==========
 @app.route('/ayarlar')
@@ -1025,6 +890,7 @@ def ayarlar_guncelle():
     data = request.get_json() or {}
     conn = get_db()
     c = conn.cursor()
+    public_menu_url = _normalize_public_menu_url(data.get('public_menu_url', get_public_menu_url()))
     c.execute(
         "UPDATE settings SET isletme_adi=?, vergi_dairesi=?, vergi_no=?, telefon=?, adres=?, iyi_niyet=?, max_garson=?, host_url=?, public_menu_url=? WHERE id=1",
         (
@@ -1036,7 +902,7 @@ def ayarlar_guncelle():
             data.get('iyi_niyet', ''),
             int(data.get('max_garson', 10)),
             data.get('host_url', 'http://localhost:8000'),
-            data.get('public_menu_url', get_public_menu_url()),
+            public_menu_url,
         )
     )
     conn.commit()
@@ -1544,15 +1410,12 @@ def api_dis_siparis():
     if not musteri_ad or not telefon or not adres or not urunler:
         return jsonify({'success': False, 'error': 'Eksik bilgi var.'}), 400
 
-    ensure_satis_hareketleri_table()
-
     conn = get_db()
     c = conn.cursor()
 
     toplam = 0.0
     stok_hatasi = []
 
-    # Önce stok ve toplam kontrolü
     for item in urunler:
         urun_id = int(item.get('urun_id', 0))
         adet = int(item.get('adet', 0))
@@ -1584,7 +1447,6 @@ def api_dis_siparis():
     """, (musteri_ad, telefon, adres, odeme_tipi, notlar, toplam, nakit_verilen, para_ustu, tahsilat_durumu))
     dis_siparis_id = c.lastrowid
 
-    # Ürünleri kaydet, stok düş, stok hareketi yaz
     for item in urunler:
         urun_id = int(item.get('urun_id', 0))
         adet = int(item.get('adet', 0))
@@ -1606,17 +1468,6 @@ def api_dis_siparis():
             "INSERT INTO stok_hareket (urun_id, adet, tip, aciklama) VALUES (?, ?, 'cikis', ?)",
             (urun_id, adet, f'Dış sipariş #{dis_siparis_id}')
         )
-
-    # Dış satış defterine ve kasa'ya yaz
-    c.execute("""
-        INSERT INTO satis_hareketleri (kanal, kaynak_turu, kaynak_id, tutar, odeme_tipi, aciklama)
-        VALUES ('dis', 'dis', ?, ?, ?, ?)
-    """, (dis_siparis_id, toplam, odeme_tipi, f'Dış sipariş #{dis_siparis_id}'))
-
-    c.execute(
-        "INSERT INTO kasa (tip, tutar, aciklama, odeme_tipi, garson_id) VALUES (?, ?, ?, ?, ?)",
-        ('gelir', toplam, f'Dış sipariş #{dis_siparis_id}', odeme_tipi, session.get('user_id'))
-    )
 
     if odeme_tipi == 'nakit':
         c.execute("""
@@ -1776,16 +1627,14 @@ def server_error(e):
 if __name__ == '__main__':
     init_db()
     ensure_menu_translations()
-    ensure_satis_hareketleri_table()
     sifreleri_kaydet()
     print("=========================================")
     print("   CAY BAHCESI PRO v10.0 + QR MENU")
     print("   Restaurant POS Sistemi")
     print("=========================================")
     print()
-    port = int(os.environ.get('PORT', 9000))
-    print(f"Yerel erisim:  http://localhost:{port}")
-    print(f"Ag erisimi:   http://0.0.0.0:{port}")
+    print("Yerel erisim:  http://localhost:8000")
+    print("Ag erisimi:   http://0.0.0.0:8000")
     print()
     print("Musteri QR Menu: /m/<uuid>")
     print("Ornek: http://localhost:8000/m/abc123...")
@@ -1796,4 +1645,4 @@ if __name__ == '__main__':
     print()
     print("Sifreler: sifreler.md dosyasinda")
     print("=========================================")
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(host='0.0.0.0', port=8000, debug=False)
