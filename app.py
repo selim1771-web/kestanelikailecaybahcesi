@@ -1408,7 +1408,7 @@ def api_dis_siparis():
     urunler = data.get('urunler', [])
 
     if not musteri_ad or not telefon or not adres or not urunler:
-        return jsonify({'success': False, 'error': 'Eksik bilgi var.'})
+        return jsonify({'success': False, 'error': 'Eksik bilgi var.'}), 400
 
     conn = get_db()
     c = conn.cursor()
@@ -1421,22 +1421,25 @@ def api_dis_siparis():
         adet = int(item.get('adet', 0))
         if urun_id <= 0 or adet <= 0:
             continue
+
         c.execute("SELECT fiyat, stok, ad FROM urunler WHERE id=? AND aktif=1", (urun_id,))
         urun = c.fetchone()
         if not urun:
             continue
+
         if urun['stok'] < adet:
             stok_hatasi.append(urun['ad'])
             continue
+
         toplam += float(urun['fiyat']) * adet
 
     if stok_hatasi:
         conn.close()
-        return jsonify({'success': False, 'error': 'Stok yetersiz: ' + ', '.join(stok_hatasi)})
+        return jsonify({'success': False, 'error': 'Stok yetersiz: ' + ', '.join(stok_hatasi)}), 400
 
     para_ustu = max(0.0, nakit_verilen - toplam) if odeme_tipi == 'nakit' else 0.0
+    tahsilat_durumu = 'beklemede'
 
-    tahsilat_durumu = 'beklemede' if odeme_tipi == 'nakit' else 'beklemede'
     c.execute("""
         INSERT INTO dis_siparisler
         (musteri_ad_soyad, telefon, teslim_adres, odeme_tipi, notlar, toplam_tutar, nakit_verilen, para_ustu, durum, tahsilat_durumu)
@@ -1449,18 +1452,22 @@ def api_dis_siparis():
         adet = int(item.get('adet', 0))
         if urun_id <= 0 or adet <= 0:
             continue
+
         c.execute("SELECT fiyat, stok, ad FROM urunler WHERE id=? AND aktif=1", (urun_id,))
         urun = c.fetchone()
         if not urun or urun['stok'] < adet:
             continue
-        c.execute("INSERT INTO dis_siparis_urunler (dis_siparis_id, urun_id, adet, fiyat) VALUES (?, ?, ?, ?)",
-                  (dis_siparis_id, urun_id, adet, float(urun['fiyat'])))
-        c.execute('''CREATE TABLE IF NOT EXISTS masalar (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        ... )''')
+
+        c.execute(
+            "INSERT INTO dis_siparis_urunler (dis_siparis_id, urun_id, adet, fiyat) VALUES (?, ?, ?, ?)",
+            (dis_siparis_id, urun_id, adet, float(urun['fiyat']))
+        )
+
         c.execute("UPDATE urunler SET stok = stok - ? WHERE id=?", (adet, urun_id))
-        c.execute("INSERT INTO stok_hareket (urun_id, adet, tip, aciklama) VALUES (?, ?, 'cikis', ?)",
-                  (urun_id, adet, f'Dış sipariş #{dis_siparis_id}'))
+        c.execute(
+            "INSERT INTO stok_hareket (urun_id, adet, tip, aciklama) VALUES (?, ?, 'cikis', ?)",
+            (urun_id, adet, f'Dış sipariş #{dis_siparis_id}')
+        )
 
     if odeme_tipi == 'nakit':
         c.execute("""
@@ -1470,7 +1477,13 @@ def api_dis_siparis():
 
     conn.commit()
     conn.close()
-    return jsonify({'success': True, 'siparis_id': dis_siparis_id, 'toplam': toplam, 'para_ustu': para_ustu})
+
+    return jsonify({
+        'success': True,
+        'siparis_id': dis_siparis_id,
+        'toplam': toplam,
+        'para_ustu': para_ustu
+    })
 
 @app.route('/dis/mutfak')
 def dis_mutfak():
