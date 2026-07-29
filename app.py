@@ -4,6 +4,7 @@ import re
 from io import BytesIO
 import qrcode
 from datetime import datetime, timedelta
+from urllib.parse import urlparse, urlunparse
 from database import get_db, init_db
 
 app = Flask(__name__)
@@ -36,15 +37,42 @@ def get_host_url():
     return row['host_url'] if row and row['host_url'] else request.host_url.rstrip('/')
 
 
+def _normalize_public_menu_url(raw_url):
+    """Public QR linkini her durumda /dis/menu adresine sabitler."""
+    fallback = "https://kestanelikcaybahcem.onrender.com/dis/menu"
+    raw_url = (raw_url or "").strip()
+    if not raw_url:
+        return fallback
+
+    parsed = urlparse(raw_url)
+    # Şema yoksa kullanıcı muhtemelen sadece host girmiş olabilir.
+    if not parsed.scheme:
+        # Örn: 192.168.1.102:8000 -> http://192.168.1.102:8000/dis/menu
+        parsed = urlparse("http://" + raw_url)
+
+    path = (parsed.path or "").rstrip('/')
+    if path != "/dis/menu":
+        path = "/dis/menu"
+
+    normalized = urlunparse((
+        parsed.scheme,
+        parsed.netloc,
+        path,
+        parsed.params,
+        parsed.query,
+        parsed.fragment
+    )).rstrip('/')
+    return normalized or fallback
+
+
 def get_public_menu_url():
     conn = get_db()
     c = conn.cursor()
     c.execute("SELECT public_menu_url FROM settings WHERE id=1")
     row = c.fetchone()
     conn.close()
-    if row and row["public_menu_url"]:
-        return row["public_menu_url"]
-    return "https://kestanelikcaybahcem.onrender.com/dis/menu"
+    stored = row["public_menu_url"] if row and row["public_menu_url"] else ""
+    return _normalize_public_menu_url(stored)
 
 def rows_to_dicts(rows):
     return [dict(row) for row in rows]
@@ -862,6 +890,7 @@ def ayarlar_guncelle():
     data = request.get_json() or {}
     conn = get_db()
     c = conn.cursor()
+    public_menu_url = _normalize_public_menu_url(data.get('public_menu_url', get_public_menu_url()))
     c.execute(
         "UPDATE settings SET isletme_adi=?, vergi_dairesi=?, vergi_no=?, telefon=?, adres=?, iyi_niyet=?, max_garson=?, host_url=?, public_menu_url=? WHERE id=1",
         (
@@ -873,7 +902,7 @@ def ayarlar_guncelle():
             data.get('iyi_niyet', ''),
             int(data.get('max_garson', 10)),
             data.get('host_url', 'http://localhost:8000'),
-            data.get('public_menu_url', get_public_menu_url()),
+            public_menu_url,
         )
     )
     conn.commit()
