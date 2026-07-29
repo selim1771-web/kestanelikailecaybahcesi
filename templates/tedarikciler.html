@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Tedarikciler - Cay Bahcesi PRO{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><span class="icon"><i class="fas fa-truck"></i></span> Tedarikci / Cari Hesaplar</h1>
+    <button class="btn btn-success" onclick="tedarikciEkleModal()">
+        <i class="fas fa-plus"></i> Yeni Tedarikci
+    </button>
+</div>
+
+<div class="card">
+    <table class="data-table">
+        <thead>
+            <tr><th>Firma</th><th>Yetkili</th><th>Telefon</th><th>Borc</th><th>Odeme</th><th>Bakiye</th><th>Islem</th></tr>
+        </thead>
+        <tbody>
+            {% for t in tedarikciler %}
+            {% set bakiye = (t.toplam_borc|default(0)) - (t.toplam_odeme|default(0)) %}
+            <tr>
+                <td><strong>{{ t.firma_adi }}</strong></td>
+                <td>{{ t.yetkili or '-' }}</td>
+                <td>{{ t.telefon or '-' }}</td>
+                <td style="color:var(--danger); font-weight:700;">{{ "%.2f"|format(t.toplam_borc|default(0)) }}</td>
+                <td style="color:var(--success);">{{ "%.2f"|format(t.toplam_odeme|default(0)) }}</td>
+                <td style="font-weight:800; color:{% if bakiye > 0 %}var(--danger){% else %}var(--success){% endif %}">
+                    {{ "%.2f"|format(bakiye) }}
+                </td>
+                <td>
+                    <a href="{{ url_for('tedarikci_detay', tedarikci_id=t.id) }}" class="btn btn-info btn-sm">
+                        <i class="fas fa-eye"></i> Detay
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Tedarikci Ekle Modal -->
+<div class="modal-overlay" id="tedarikciModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-plus"></i> Yeni Tedarikci</h3>
+            <button class="modal-close" onclick="document.getElementById('tedarikciModal').classList.remove('active')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Firma Adi *</label>
+                <input type="text" id="tdFirma" class="form-control" placeholder="Firma adi...">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Yetkili</label>
+                    <input type="text" id="tdYetkili" class="form-control" placeholder="Yetkili kisi...">
+                </div>
+                <div class="form-group">
+                    <label>Telefon</label>
+                    <input type="text" id="tdTelefon" class="form-control" placeholder="05XX XXX XXXX">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Vergi Dairesi</label>
+                    <input type="text" id="tdVergiDaire" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Vergi No</label>
+                    <input type="text" id="tdVergiNo" class="form-control">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Adres</label>
+                <textarea id="tdAdres" class="form-control" rows="2"></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="document.getElementById('tedarikciModal').classList.remove('active')">Iptal</button>
+            <button class="btn btn-success" onclick="tedarikciKaydet()">
+                <i class="fas fa-save"></i> Kaydet
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+function tedarikciEkleModal() {
+    document.getElementById('tedarikciModal').classList.add('active');
+}
+function tedarikciKaydet() {
+    const data = {
+        firma_adi: document.getElementById('tdFirma').value,
+        yetkili: document.getElementById('tdYetkili').value,
+        telefon: document.getElementById('tdTelefon').value,
+        vergi_dairesi: document.getElementById('tdVergiDaire').value,
+        vergi_no: document.getElementById('tdVergiNo').value,
+        adres: document.getElementById('tdAdres').value
+    };
+    if (!data.firma_adi) { alert('Firma adi girin!'); return; }
+    fetch('/api/tedarikci/ekle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(d => { if (d.success) location.reload(); else alert('Hata!'); })
+    .catch(() => alert('Hata olustu!'));
+}
+</script>
+{% endblock %}

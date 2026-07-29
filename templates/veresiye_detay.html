@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}{{ musteri.ad_soyad }} - Veresiye Detay{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><span class="icon"><i class="fas fa-file-invoice-dollar"></i></span> Veresiye Detay</h1>
+    <a href="{{ url_for('veresiye_defteri') }}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Geri
+    </a>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon"><i class="fas fa-user"></i></div>
+        <div class="stat-value">{{ musteri.ad_soyad }}</div>
+        <div class="stat-label">Musteri</div>
+    </div>
+    <div class="stat-card danger">
+        <div class="stat-icon"><i class="fas fa-hand-holding-usd"></i></div>
+        <div class="stat-value">{{ "%.2f"|format(ozet.toplam_borc) }}</div>
+        <div class="stat-label">Toplam Borc</div>
+    </div>
+    <div class="stat-card success">
+        <div class="stat-icon"><i class="fas fa-money-bill-wave"></i></div>
+        <div class="stat-value">{{ "%.2f"|format(ozet.toplam_tahsilat) }}</div>
+        <div class="stat-label">Toplam Tahsilat</div>
+    </div>
+    <div class="stat-card accent">
+        <div class="stat-icon"><i class="fas fa-balance-scale"></i></div>
+        <div class="stat-value">{{ "%.2f"|format(ozet.toplam_borc - ozet.toplam_tahsilat) }}</div>
+        <div class="stat-label">Kalan Bakiye</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-list-alt"></i> Ayrintili Döküm</h3>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr><th>Tarih</th><th>Aciklama</th><th>Urun Detayi</th><th>Borc</th><th>Tahsilat</th><th>Bakiye</th></tr>
+        </thead>
+        <tbody>
+            {% set ns = namespace(bakiye=0) %}
+            {% for h in hareketler|reverse %}
+            {% set ns.bakiye = ns.bakiye + h.borc - h.tahsilat %}
+            <tr>
+                <td>{{ h.tarih }}</td>
+                <td><strong>{{ h.aciklama }}</strong></td>
+                <td>
+                    {% if h.urun_detay %}
+                        <span style="font-size:12px; color:var(--gray);">{{ h.urun_detay }}</span>
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td style="color:var(--danger); font-weight:700;">{% if h.borc > 0 %}{{ "%.2f"|format(h.borc) }}{% else %}-{% endif %}</td>
+                <td style="color:var(--success); font-weight:700;">{% if h.tahsilat > 0 %}{{ "%.2f"|format(h.tahsilat) }}{% else %}-{% endif %}</td>
+                <td style="font-weight:800;">{{ "%.2f"|format(ns.bakiye) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

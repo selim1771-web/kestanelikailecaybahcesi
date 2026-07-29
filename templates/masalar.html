@@ -1,0 +1,361 @@
+{% extends "base.html" %}
+{% block title %}Masalar - Cay Bahcesi PRO{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><span class="icon"><i class="fas fa-chair"></i></span> Masalar</h1>
+</div>
+
+{% for kat in katlar %}
+<div class="kat-section">
+    <div class="kat-title"><i class="fas fa-layer-group"></i> {{ kat.kat_adi }}</div>
+    <div class="masa-grid">
+        {% for m in masalar %}
+        {% if m.kat_id == kat.id %}
+        <div class="masa-card {{ m.durum }}" onclick="masaDetay({{ m.id }})">
+            <div class="masa-icon">{% if m.durum == 'dolu' %}🍽️{% else %}🪑{% endif %}</div>
+            <div class="masa-no">{{ m.masa_no }}</div>
+            <div class="masa-durum">{{ m.durum|upper }}</div>
+            {% if m.durum == 'dolu' %}
+            <div class="masa-tutar">₺{{ "%.2f"|format(m.toplam_tutar|default(0)) }}</div>
+            {% endif %}
+            <button class="btn btn-sm btn-outline" style="margin-top:8px; font-size:11px; padding:4px 8px;" onclick="event.stopPropagation(); qrModalAc({{ m.id }}, '{{ m.masa_no }}')">
+                <i class="fas fa-qrcode"></i> QR
+            </button>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+</div>
+{% endfor %}
+
+<!-- Masa Detay Modal -->
+<div class="modal-overlay" id="masaModal">
+    <div class="modal-content" style="max-width:700px;">
+        <div class="modal-header">
+            <h3><i class="fas fa-receipt"></i> Masa Detayi</h3>
+            <button class="modal-close" onclick="kapatModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="modalBody">
+            <p style="text-align:center; color:var(--gray);">Yukleniyor...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Veresiye Yeni Musteri Modal (Mevcut duzene sadik) -->
+<div class="modal-overlay" id="veresiyeYeniModal">
+    <div class="modal-content" style="max-width:500px;">
+        <div class="modal-header">
+            <h3><i class="fas fa-user-plus"></i> Yeni Veresiye Musteri</h3>
+            <button class="modal-close" onclick="document.getElementById('veresiyeYeniModal').classList.remove('active')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Ad Soyad *</label>
+                <input type="text" id="yeniMusteriAd" class="form-control" placeholder="Musteri adi soyadi...">
+            </div>
+            <div class="form-group">
+                <label>Telefon</label>
+                <input type="text" id="yeniMusteriTelefon" class="form-control" placeholder="05XX XXX XXXX">
+            </div>
+            <input type="hidden" id="yeniMusteriMasaId">
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="document.getElementById('veresiyeYeniModal').classList.remove('active')">Iptal</button>
+            <button class="btn btn-success" onclick="yeniMusteriKaydet()">
+                <i class="fas fa-save"></i> Kaydet ve Veresiye Yap
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentMasaId = null;
+
+function masaDetay(masaId) {
+    currentMasaId = masaId;
+    document.getElementById('masaModal').classList.add('active');
+    fetch('/api/masa/' + masaId + '/detay')
+        .then(r => r.json())
+        .then(data => {
+            let html = '';
+            if (data.siparisler && data.siparisler.length > 0) {
+                html += `<div style="margin-bottom:20px;">
+                    <h4 style="margin-bottom:12px; color:var(--primary-dark);"><i class="fas fa-list"></i> Siparisler</h4>
+                    <table class="data-table">
+                        <thead><tr><th>Urun</th><th>Adet</th><th>Birim</th><th>Tutar</th><th>Garson</th></tr></thead>
+                        <tbody>`;
+                let toplam = 0;
+                data.siparisler.forEach(s => {
+                    const tutar = s.fiyat * s.adet;
+                    toplam += tutar;
+                    html += `<tr>
+                        <td><strong>${s.urun_ad}</strong></td>
+                        <td>${s.adet}</td>
+                        <td>₺${s.fiyat.toFixed(2)}</td>
+                        <td><strong>₺${tutar.toFixed(2)}</strong></td>
+                        <td>${s.garson_adi}</td>
+                    </tr>`;
+                });
+                html += `</tbody></table>
+                    <div style="text-align:right; margin-top:16px; font-size:22px; font-weight:800; color:var(--accent);">
+                        TOPLAM: ₺${toplam.toFixed(2)}
+                    </div>
+                </div>`;
+
+                // Odeme butonlari
+                html += `<div style="margin-bottom:20px;">
+                    <h4 style="margin-bottom:12px; color:var(--primary-dark);"><i class="fas fa-credit-card"></i> Odeme Al</h4>
+                    <div class="odeme-btns">
+                        <button class="odeme-btn nakit" onclick="odemeYap('nakit')">
+                            <i class="fas fa-money-bill-wave" style="font-size:24px; display:block; margin-bottom:6px;"></i>
+                            NAKIT
+                        </button>
+                        <button class="odeme-btn kredi" onclick="odemeYap('kredi')">
+                            <i class="fas fa-credit-card" style="font-size:24px; display:block; margin-bottom:6px;"></i>
+                            KREDI KARTI
+                        </button>
+                        <button class="odeme-btn veresiye" onclick="veresiyeModalAc()">
+                            <i class="fas fa-hand-holding-usd" style="font-size:24px; display:block; margin-bottom:6px;"></i>
+                            VERESIYE
+                        </button>
+                    </div>
+                </div>`;
+
+                // Masa aktarma
+                if (data.bos_masalar && data.bos_masalar.length > 0) {
+                    html += `<div style="margin-bottom:20px; padding:16px; background:var(--gray-light); border-radius:8px;">
+                        <h4 style="margin-bottom:12px; color:var(--primary-dark);"><i class="fas fa-exchange-alt"></i> Masa Aktar</h4>
+                        <div style="display:flex; gap:12px; align-items:center;">
+                            <select id="aktarMasa" class="form-control">`;
+                    data.bos_masalar.forEach(m => {
+                        html += `<option value="${m.id}">${m.masa_no}</option>`;
+                    });
+                    html += `</select>
+                            <button class="btn btn-info" onclick="masaAktar()">
+                                <i class="fas fa-arrow-right"></i> Aktar
+                            </button>
+                        </div>
+                    </div>`;
+                }
+
+                // Fis butonu
+                html += `<div style="text-align:center; margin-top:16px;">
+                    <a href="/fis/${masaId}" target="_blank" class="btn btn-outline">
+                        <i class="fas fa-print"></i> Fis Gor ve Yazdir
+                    </a>
+                </div>`;
+            } else {
+                html = `<div style="text-align:center; padding:40px;">
+                    <div style="font-size:48px; margin-bottom:16px;">🪑</div>
+                    <h3 style="color:var(--success);">Masa Bos</h3>
+                    <p style="color:var(--gray); margin-top:8px;">Bu masada aktif siparis bulunmuyor.</p>
+                </div>`;
+            }
+            document.getElementById('modalBody').innerHTML = html;
+        })
+        .catch(() => {
+            document.getElementById('modalBody').innerHTML = '<p style="color:var(--danger);">Veri yuklenemedi!</p>';
+        });
+}
+
+function kapatModal() {
+    document.getElementById('masaModal').classList.remove('active');
+    currentMasaId = null;
+}
+
+function odemeYap(tip) {
+    if (!currentMasaId) return;
+    if (!confirm('Odeme alindi olarak isaretlensin mi?')) return;
+    fetch('/api/masa/' + currentMasaId + '/odeme', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ odeme_tipi: tip })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('Odeme alindi! Toplam: ₺' + data.toplam.toFixed(2));
+            kapatModal();
+            location.reload();
+        }
+    })
+    .catch(() => alert('Hata olustu!'));
+}
+
+// VERESIYE - Yeni musteri ekleme (Mevcut duzene sadik)
+function veresiyeModalAc() {
+    if (!currentMasaId) return;
+    // Once mevcut musterileri kontrol et, yoksa yeni musteri modalini ac
+    fetch('/api/veresiye/liste')
+        .then(r => r.json())
+        .then(data => {
+            if (data.musteriler && data.musteriler.length > 0) {
+                // Mevcut musteriler varsa secim modalini goster
+                let html = `<div style="margin-bottom:16px;">
+                    <h4 style="margin-bottom:12px;"><i class="fas fa-user"></i> Veresiye Musteri Sec</h4>
+                    <select id="veresiyeMusteri" class="form-control" style="margin-bottom:12px;">
+                        <option value="">Musteri secin...</option>`;
+                data.musteriler.forEach(v => {
+                    html += `<option value="${v.id}">${v.ad_soyad}</option>`;
+                });
+                html += `</select>
+                    <p style="font-size:13px; color:var(--gray); margin-bottom:12px;">Yeni musteri eklemek icin asagidaki butonu kullanin.</p>
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn btn-success" onclick="veresiyeOde()">
+                            <i class="fas fa-check"></i> Onayla
+                        </button>
+                        <button class="btn btn-warning" onclick="yeniMusteriModalAc()">
+                            <i class="fas fa-user-plus"></i> Yeni Musteri
+                        </button>
+                        <button class="btn btn-secondary" onclick="masaDetay(${currentMasaId})">
+                            <i class="fas fa-times"></i> Iptal
+                        </button>
+                    </div>
+                </div>`;
+                document.getElementById('modalBody').innerHTML = html;
+            } else {
+                // Hic musteri yoksa direkt yeni musteri modalini ac
+                yeniMusteriModalAc();
+            }
+        })
+        .catch(() => yeniMusteriModalAc());
+}
+
+function yeniMusteriModalAc() {
+    document.getElementById('yeniMusteriMasaId').value = currentMasaId;
+    document.getElementById('yeniMusteriAd').value = '';
+    document.getElementById('yeniMusteriTelefon').value = '';
+    document.getElementById('veresiyeYeniModal').classList.add('active');
+}
+
+function yeniMusteriKaydet() {
+    const ad = document.getElementById('yeniMusteriAd').value.trim();
+    const telefon = document.getElementById('yeniMusteriTelefon').value.trim();
+    const masaId = document.getElementById('yeniMusteriMasaId').value;
+    if (!ad) { alert('Ad soyad girin!'); return; }
+
+    // Once musteriyi kaydet
+    fetch('/api/veresiye/ekle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ad_soyad: ad, telefon: telefon })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success && data.id) {
+            // Musteri kaydedildi, simdi veresiye odemesini yap
+            document.getElementById('veresiyeYeniModal').classList.remove('active');
+            fetch('/api/masa/' + masaId + '/odeme', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ odeme_tipi: 'veresiye', veresiye_id: data.id })
+            })
+            .then(r => r.json())
+            .then(odemeData => {
+                if (odemeData.success) {
+                    alert('Veresiye kaydedildi! Musteri: ' + ad);
+                    kapatModal();
+                    location.reload();
+                }
+            })
+            .catch(() => alert('Odeme hatasi!'));
+        } else {
+            alert('Musteri kaydedilemedi!');
+        }
+    })
+    .catch(() => alert('Hata olustu!'));
+}
+
+function veresiyeOde() {
+    const musteriId = document.getElementById('veresiyeMusteri').value;
+    if (!musteriId) { alert('Musteri secin!'); return; }
+    if (!confirm('Veresiye olarak isaretlensin mi?')) return;
+    fetch('/api/masa/' + currentMasaId + '/odeme', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ odeme_tipi: 'veresiye', veresiye_id: parseInt(musteriId) })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('Veresiye kaydedildi!');
+            kapatModal();
+            location.reload();
+        }
+    })
+    .catch(() => alert('Hata olustu!'));
+}
+
+function masaAktar() {
+    const yeniMasaId = document.getElementById('aktarMasa').value;
+    if (!yeniMasaId) { alert('Masa secin!'); return; }
+    if (!confirm('Masa aktarilsin mi?')) return;
+    fetch('/api/masa/aktar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eski_masa_id: currentMasaId, yeni_masa_id: parseInt(yeniMasaId) })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('Masa aktarildi!');
+            kapatModal();
+            location.reload();
+        }
+    })
+    .catch(() => alert('Hata olustu!'));
+}
+
+// QR Modal
+function qrModalAc(masaId, masaNo) {
+    document.getElementById('qrModalMasaNo').textContent = masaNo;
+    document.getElementById('qrModalBody').innerHTML = '<p style="color:var(--gray);">Yükleniyor...</p>';
+    document.getElementById('qrModal').classList.add('active');
+    fetch('/api/masa/' + masaId + '/qr-bilgi')
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) {
+                document.getElementById('qrModalUrl').textContent = d.url;
+                document.getElementById('qrModalBody').innerHTML = '';
+                new QRCode(document.getElementById('qrModalBody'), {
+                    text: d.url,
+                    width: 200,
+                    height: 200,
+                    colorDark: "#1a237e",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.M
+                });
+            }
+        })
+        .catch(() => {
+            document.getElementById('qrModalBody').innerHTML = '<p style="color:var(--danger);">QR kod yüklenemedi!</p>';
+        });
+}
+
+document.getElementById('masaModal').addEventListener('click', function(e) {
+    if (e.target === this) kapatModal();
+});
+</script>
+
+<!-- QR Modal -->
+<div class="modal-overlay" id="qrModal">
+    <div class="modal-content" style="max-width:420px;">
+        <div class="modal-header">
+            <h3><i class="fas fa-qrcode"></i> <span id="qrModalMasaNo"></span> - QR Kod</h3>
+            <button class="modal-close" onclick="document.getElementById('qrModal').classList.remove('active')">&times;</button>
+        </div>
+        <div class="qr-modal-body">
+            <div class="qr-buyutec" id="qrModalBody"></div>
+            <div class="qr-url" id="qrModalUrl"></div>
+            <p style="font-size:13px; color:var(--gray);">Müşteriler bu QR kodu okutarak menüye erişebilir.</p>
+        </div>
+        <div class="modal-footer">
+            <a href="{{ url_for('qr_yazdir') }}" class="btn btn-primary">
+                <i class="fas fa-print"></i> Tümünü Yazdır
+            </a>
+            <button class="btn btn-secondary" onclick="document.getElementById('qrModal').classList.remove('active')">Kapat</button>
+        </div>
+    </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+{% endblock %}

@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Mutfak - Cay Bahcesi PRO{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><span class="icon"><i class="fas fa-utensils"></i></span> Mutfak Ekrani</h1>
+    <button class="btn btn-secondary" onclick="location.reload()">
+        <i class="fas fa-sync-alt"></i> Yenile
+    </button>
+</div>
+
+{% if masa_gruplari %}
+    {% for mg in masa_gruplari %}
+    <div class="mutfak-card" style="border-left: 4px solid var(--warning); margin-bottom: 20px;">
+        <div class="mutfak-header" style="background: linear-gradient(135deg, var(--primary-dark), var(--primary)); color: white; padding: 16px 20px; border-radius: 8px 8px 0 0; margin: -20px -20px 16px -20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <div style="font-size: 20px; font-weight: 800;">{{ mg.kat_adi }} - {{ mg.masa_no }}</div>
+                    <div style="font-size: 13px; opacity: 0.8; margin-top: 4px;">
+                        <i class="fas fa-clock"></i> {{ mg.son_siparis }} | 
+                        <i class="fas fa-shopping-basket"></i> {{ mg.urun_sayisi }} urun | 
+                        <i class="fas fa-lira-sign"></i> ₺{{ "%.2f"|format(mg.toplam_tutar) }}
+                    </div>
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <button class="btn btn-warning btn-sm" onclick="masaDurumGuncelle({{ mg.masa_id }}, 'hazirlaniyor')">
+                        <i class="fas fa-fire"></i> Hazirlaniyor
+                    </button>
+                    <button class="btn btn-info btn-sm" onclick="masaDurumGuncelle({{ mg.masa_id }}, 'hazir')">
+                        <i class="fas fa-check"></i> Hazir
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Siparis Fisi - Butun urunler -->
+        <div style="background: var(--gray-light); border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+            <h4 style="font-size: 14px; font-weight: 700; color: var(--primary-dark); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+                <i class="fas fa-receipt"></i> Siparis Fisi
+            </h4>
+            <table class="data-table" style="font-size: 13px;">
+                <thead>
+                    <tr style="background: var(--primary); color: white;">
+                        <th>Urun</th>
+                        <th>Adet</th>
+                        <th>Birim</th>
+                        <th>Tutar</th>
+                        <th>Garson</th>
+                        <th>Not</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in mg.urunler %}
+                    <tr>
+                        <td><strong>{{ u.urun_ad }}</strong></td>
+                        <td>{{ u.adet }}</td>
+                        <td>₺{{ "%.2f"|format(u.fiyat) }}</td>
+                        <td style="color: var(--accent); font-weight: 700;">₺{{ "%.2f"|format(u.fiyat * u.adet) }}</td>
+                        <td>{{ u.garson_adi }}</td>
+                        <td>{{ u.notlar or '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div style="text-align: right; margin-top: 12px; font-size: 18px; font-weight: 800; color: var(--accent);">
+                TOPLAM: ₺{{ "%.2f"|format(mg.toplam_tutar) }}
+            </div>
+        </div>
+
+        <!-- Gonderildi Butonu -->
+        <div style="text-align: center; padding: 16px; background: rgba(46, 125, 50, 0.05); border-radius: 8px; border: 2px dashed var(--success);">
+            <p style="color: var(--gray); font-size: 13px; margin-bottom: 12px;">
+                <i class="fas fa-info-circle"></i> Tum urunler hazirlandiginda asagidaki butona basin
+            </p>
+            <button class="btn btn-success btn-lg" onclick="masaDurumGuncelle({{ mg.masa_id }}, 'teslim')" style="padding: 14px 40px; font-size: 16px;">
+                <i class="fas fa-paper-plane"></i> GONDERildi - Garson Teslim Alsin
+            </button>
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+    <div style="text-align:center; padding:60px;">
+        <div style="font-size:64px; margin-bottom:16px;">👨‍🍳</div>
+        <h2 style="color:var(--gray);">Bekleyen siparis yok</h2>
+        <p style="color:var(--gray); margin-top:8px;">Tum siparisler hazirlandi!</p>
+    </div>
+{% endif %}
+
+<script>
+function masaDurumGuncelle(masaId, durum) {
+    let msg = '';
+    if (durum === 'hazirlaniyor') msg = 'Siparisler hazirlaniyor olarak isaretlensin mi?';
+    else if (durum === 'hazir') msg = 'Siparisler hazir olarak isaretlensin mi?';
+    else if (durum === 'teslim') msg = 'Siparisler garsona teslim edildi olarak isaretlensin mi?';
+    if (!confirm(msg)) return;
+
+    fetch('/api/masa/' + masaId + '/siparis/durum', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ durum: durum })
+    })
+    .then(() => location.reload())
+    .catch(() => alert('Hata olustu!'));
+}
+
+// Otomatik yenileme (15 saniye - daha hizli)
+setTimeout(() => location.reload(), 15000);
+</script>
+{% endblock %}

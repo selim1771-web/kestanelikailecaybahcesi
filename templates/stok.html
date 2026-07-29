@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}Stok - Çay Bahçesi PRO{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><span class="icon"><i class="fas fa-boxes"></i></span> Stok Yönetimi</h1>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-exclamation-triangle"></i> Kritik Stoklar</h3>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr><th>Ürün</th><th>Kategori</th><th>Mevcut</th><th>Kritik</th><th>Durum</th></tr>
+        </thead>
+        <tbody>
+            {% for u in urunler %}
+            {% if u.stok <= u.kritik_stok %}
+            <tr>
+                <td><strong>{{ u.ad }}</strong></td>
+                <td>{{ u.kategori_ad }}</td>
+                <td style="color:var(--danger); font-weight:700;">{{ u.stok }}</td>
+                <td>{{ u.kritik_stok }}</td>
+                <td><span class="badge badge-danger">KRİTİK</span></td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-warehouse"></i> Tüm Ürünler</h3>
+        {% if session.role == 'admin' %}
+        <button class="btn btn-success btn-sm" onclick="stokGuncelleModal()">
+            <i class="fas fa-plus"></i> Stok Ekle
+        </button>
+        {% endif %}
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr><th>Ürün</th><th>Kategori</th><th>Stok</th><th>Kritik</th><th>Durum</th></tr>
+        </thead>
+        <tbody>
+            {% for u in urunler %}
+            <tr>
+                <td><strong>{{ u.ad }}</strong></td>
+                <td>{{ u.kategori_ad }}</td>
+                <td {% if u.stok <= u.kritik_stok %}style="color:var(--danger); font-weight:700;"{% endif %}>{{ u.stok }}</td>
+                <td>{{ u.kritik_stok }}</td>
+                <td>
+                    {% if u.stok <= u.kritik_stok %}
+                        <span class="badge badge-danger">KRİTİK</span>
+                    {% elif u.stok <= u.kritik_stok * 2 %}
+                        <span class="badge badge-warning">DÜŞÜK</span>
+                    {% else %}
+                        <span class="badge badge-success">YETERLİ</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-history"></i> Son Hareketler</h3>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr><th>Tarih</th><th>Ürün</th><th>Adet</th><th>Tip</th><th>Açıklama</th></tr>
+        </thead>
+        <tbody>
+            {% for h in hareketler %}
+            <tr>
+                <td>{{ h.created_at }}</td>
+                <td><strong>{{ h.urun_ad }}</strong></td>
+                <td {% if h.tip == 'cikis' %}style="color:var(--danger);"{% else %}style="color:var(--success);"{% endif %}>
+                    {% if h.tip == 'cikis' %}-{% else %}+{% endif %}{{ h.adet }}
+                </td>
+                <td>
+                    {% if h.tip == 'cikis' %}
+                        <span class="badge badge-danger">Çıkış</span>
+                    {% else %}
+                        <span class="badge badge-success">Giriş</span>
+                    {% endif %}
+                </td>
+                <td>{{ h.aciklama }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Stok Modal -->
+<div class="modal-overlay" id="stokModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-plus"></i> Stok Ekle</h3>
+            <button class="modal-close" onclick="document.getElementById('stokModal').classList.remove('active')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Ürün</label>
+                <select id="stokUrun" class="form-control">
+                    {% for u in urunler %}
+                    <option value="{{ u.id }}">{{ u.ad }} (Mevcut: {{ u.stok }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Eklenecek Adet</label>
+                <input type="number" id="stokAdet" class="form-control" value="10">
+            </div>
+            <div class="form-group">
+                <label>Açıklama</label>
+                <input type="text" id="stokAciklama" class="form-control" value="Stok girişi">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="document.getElementById('stokModal').classList.remove('active')">İptal</button>
+            <button class="btn btn-success" onclick="stokKaydet()">
+                <i class="fas fa-save"></i> Kaydet
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+function stokGuncelleModal() {
+    document.getElementById('stokModal').classList.add('active');
+}
+function stokKaydet() {
+    const data = {
+        urun_id: parseInt(document.getElementById('stokUrun').value),
+        adet: parseInt(document.getElementById('stokAdet').value),
+        aciklama: document.getElementById('stokAciklama').value
+    };
+    fetch('/api/stok/guncelle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(d => { if (d.success) location.reload(); else alert('Yetkisiz!'); })
+    .catch(() => alert('Hata oluştu!'));
+}
+</script>
+{% endblock %}

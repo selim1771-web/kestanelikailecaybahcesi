@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% block title %}Kasa Defteri - Cay Bahcesi PRO{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><span class="icon"><i class="fas fa-book"></i></span> Kasa Defteri</h1>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-filter"></i> Tarih Araligi</h3>
+    </div>
+    <form method="GET" action="{{ url_for('kasa_defteri') }}" class="tarih-filter">
+        <label>Baslangic:</label>
+        <input type="date" name="baslangic" value="{{ baslangic }}">
+        <label>Bitis:</label>
+        <input type="date" name="bitis" value="{{ bitis }}">
+        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-search"></i> Filtrele</button>
+        <a href="{{ url_for('kasa_defteri') }}" class="btn btn-secondary btn-sm"><i class="fas fa-undo"></i> Bugun</a>
+    </form>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card success">
+        <div class="stat-icon"><i class="fas fa-arrow-up"></i></div>
+        <div class="stat-value">{{ "%.2f"|format(ozet.toplam_gelir) }}</div>
+        <div class="stat-label">Toplam Gelir</div>
+    </div>
+    <div class="stat-card danger">
+        <div class="stat-icon"><i class="fas fa-arrow-down"></i></div>
+        <div class="stat-value">{{ "%.2f"|format(ozet.toplam_gider) }}</div>
+        <div class="stat-label">Toplam Gider</div>
+    </div>
+    <div class="stat-card accent">
+        <div class="stat-icon"><i class="fas fa-balance-scale"></i></div>
+        <div class="stat-value">{{ "%.2f"|format(ozet.toplam_gelir - ozet.toplam_gider) }}</div>
+        <div class="stat-label">Net Bakiye</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-list"></i> Kasa Hareketleri</h3>
+        <button class="btn btn-success btn-sm" onclick="hareketEkleModal()">
+            <i class="fas fa-plus"></i> Yeni Kayit
+        </button>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Tarih</th>
+                <th>Belge No</th>
+                <th>Aciklama</th>
+                <th>Kategori</th>
+                <th>Gelir</th>
+                <th>Gider</th>
+                <th>Odeme</th>
+                <th>Garson</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for h in hareketler %}
+            <tr>
+                <td>{{ h.tarih }}</td>
+                <td>{{ h.belge_no or '-' }}</td>
+                <td><strong>{{ h.aciklama }}</strong></td>
+                <td><span class="badge badge-primary">{{ h.kategori }}</span></td>
+                <td style="color:var(--success); font-weight:700;">{% if h.gelir > 0 %}{{ "%.2f"|format(h.gelir) }}{% else %}-{% endif %}</td>
+                <td style="color:var(--danger); font-weight:700;">{% if h.gider > 0 %}{{ "%.2f"|format(h.gider) }}{% else %}-{% endif %}</td>
+                <td>{{ h.odeme_tipi|capitalize }}</td>
+                <td>{{ h.garson_adi or '-' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8" style="text-align:center; color:var(--gray);">Kayit bulunmuyor.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-calendar-check"></i> Gunluk Devir</h3>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr><th>Tarih</th><th>Acilis</th><th>Gelir</th><th>Gider</th><th>Kapanis</th><th>Durum</th><th>Kapanis Saati</th></tr>
+        </thead>
+        <tbody>
+            {% for d in devirler %}
+            <tr>
+                <td><strong>{{ d.tarih }}</strong></td>
+                <td>{{ "%.2f"|format(d.acilis_bakiye) }}</td>
+                <td style="color:var(--success);">{{ "%.2f"|format(d.toplam_gelir) }}</td>
+                <td style="color:var(--danger);">{{ "%.2f"|format(d.toplam_gider) }}</td>
+                <td style="font-weight:800; color:var(--accent);">{{ "%.2f"|format(d.kapanis_bakiye) }}</td>
+                <td>
+                    {% if d.durum == 'kapali' %}
+                        <span class="badge badge-success">Kapali</span>
+                    {% else %}
+                        <span class="badge badge-warning">Acik</span>
+                    {% endif %}
+                </td>
+                <td>{{ d.kapanis_saati or '-' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <div style="text-align:right; margin-top:16px;">
+        <button class="btn btn-primary" onclick="devirKapat()">
+            <i class="fas fa-lock"></i> Bugunku Kasa Kapanisi Yap
+        </button>
+    </div>
+</div>
+
+<!-- Hareket Ekle Modal -->
+<div class="modal-overlay" id="hareketModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-plus"></i> Kasa Hareketi Ekle</h3>
+            <button class="modal-close" onclick="document.getElementById('hareketModal').classList.remove('active')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Tarih</label>
+                    <input type="date" id="kdTarih" class="form-control" value="{{ bitis }}">
+                </div>
+                <div class="form-group">
+                    <label>Belge No</label>
+                    <input type="text" id="kdBelge" class="form-control" placeholder="Fis no...">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Aciklama</label>
+                <input type="text" id="kdAciklama" class="form-control" placeholder="Aciklama...">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Gelir</label>
+                    <input type="number" step="0.01" id="kdGelir" class="form-control" value="0">
+                </div>
+                <div class="form-group">
+                    <label>Gider</label>
+                    <input type="number" step="0.01" id="kdGider" class="form-control" value="0">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Odeme Tipi</label>
+                    <select id="kdOdeme" class="form-control">
+                        <option value="nakit">Nakit</option>
+                        <option value="kredi">Kredi Karti</option>
+                        <option value="havale">Havale</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Kategori</label>
+                    <select id="kdKategori" class="form-control">
+                        <option value="satis">Satis</option>
+                        <option value="gider">Gider</option>
+                        <option value="maas">Maas</option>
+                        <option value="kira">Kira</option>
+                        <option value="diger">Diger</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="document.getElementById('hareketModal').classList.remove('active')">Iptal</button>
+            <button class="btn btn-success" onclick="hareketKaydet()">
+                <i class="fas fa-save"></i> Kaydet
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+function hareketEkleModal() {
+    document.getElementById('hareketModal').classList.add('active');
+}
+function hareketKaydet() {
+    const data = {
+        tarih: document.getElementById('kdTarih').value,
+        belge_no: document.getElementById('kdBelge').value,
+        aciklama: document.getElementById('kdAciklama').value,
+        gelir: parseFloat(document.getElementById('kdGelir').value) || 0,
+        gider: parseFloat(document.getElementById('kdGider').value) || 0,
+        odeme_tipi: document.getElementById('kdOdeme').value,
+        kategori: document.getElementById('kdKategori').value
+    };
+    if (!data.aciklama) { alert('Aciklama girin!'); return; }
+    fetch('/api/kasa_defteri/ekle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(d => { if (d.success) location.reload(); else alert('Hata!'); })
+    .catch(() => alert('Hata olustu!'));
+}
+function devirKapat() {
+    if (!confirm('Bugunku kasa kapanisi yapilsin mi? Ertesi gun acilis bakiyesi otomatik hesaplanacak.')) return;
+    fetch('/api/gunluk_devir/kapat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) {
+            alert('Kasa kapanisi yapildi! Kapanis bakiyesi: ' + d.kapanis_bakiye.toFixed(2));
+            location.reload();
+        }
+    })
+    .catch(() => alert('Hata olustu!'));
+}
+</script>
+{% endblock %}

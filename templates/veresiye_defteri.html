@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Veresiye Defteri - Cay Bahcesi PRO{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><span class="icon"><i class="fas fa-file-invoice-dollar"></i></span> Veresiye Defteri</h1>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-users"></i> Veresiye Musterileri</h3>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr><th>Musteri</th><th>Telefon</th><th>Toplam Borc</th><th>Toplam Tahsilat</th><th>Bakiye</th><th>Islem</th></tr>
+        </thead>
+        <tbody>
+            {% for m in musteriler %}
+            {% set bakiye = (m.toplam_borc|default(0)) - (m.toplam_tahsilat|default(0)) %}
+            <tr>
+                <td><strong>{{ m.ad_soyad }}</strong></td>
+                <td>{{ m.telefon or '-' }}</td>
+                <td style="color:var(--danger); font-weight:700;">{{ "%.2f"|format(m.toplam_borc|default(0)) }}</td>
+                <td style="color:var(--success);">{{ "%.2f"|format(m.toplam_tahsilat|default(0)) }}</td>
+                <td style="font-weight:800; font-size:16px; color:{% if bakiye > 0 %}var(--danger){% else %}var(--success){% endif %}">
+                    {{ "%.2f"|format(bakiye) }}
+                </td>
+                <td>
+                    <a href="{{ url_for('veresiye_detay', veresiye_id=m.id) }}" class="btn btn-info btn-sm">
+                        <i class="fas fa-eye"></i> Detayli Döküm
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

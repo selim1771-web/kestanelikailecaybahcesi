@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Garsonlar - Çay Bahçesi PRO{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><span class="icon"><i class="fas fa-users"></i></span> Garson Yönetimi</h1>
+    <button class="btn btn-success" onclick="garsonEkleModal()">
+        <i class="fas fa-plus"></i> Yeni Garson
+    </button>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3>Aktif Garsonlar ({{ garsonlar|length }} / {{ max_garson }})</h3>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr><th>Ad Soyad</th><th>Kullanıcı</th><th>Telefon</th><th>Kayıt</th><th>İşlem</th></tr>
+        </thead>
+        <tbody>
+            {% for g in garsonlar %}
+            <tr>
+                <td><strong>{{ g.ad_soyad }}</strong></td>
+                <td>{{ g.username }}</td>
+                <td>{{ g.telefon or '-' }}</td>
+                <td>{{ g.created_at }}</td>
+                <td>
+                    <button class="btn btn-danger btn-sm" onclick="garsonSil({{ g.id }}, '{{ g.ad_soyad }}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Garson Modal -->
+<div class="modal-overlay" id="garsonModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-user-plus"></i> Yeni Garson Ekle</h3>
+            <button class="modal-close" onclick="document.getElementById('garsonModal').classList.remove('active')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Ad Soyad</label>
+                <input type="text" id="garsonAd" class="form-control" placeholder="Garson adı...">
+            </div>
+            <div class="form-group">
+                <label>Kullanıcı Adı</label>
+                <input type="text" id="garsonKullanici" class="form-control" placeholder="kullanici_adi">
+            </div>
+            <div class="form-group">
+                <label>Şifre</label>
+                <input type="text" id="garsonSifre" class="form-control" placeholder="sifre123">
+            </div>
+            <div class="form-group">
+                <label>Telefon</label>
+                <input type="text" id="garsonTelefon" class="form-control" placeholder="05XX XXX XXXX">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="document.getElementById('garsonModal').classList.remove('active')">İptal</button>
+            <button class="btn btn-success" onclick="garsonKaydet()">
+                <i class="fas fa-save"></i> Kaydet
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+function garsonEkleModal() {
+    document.getElementById('garsonModal').classList.add('active');
+}
+function garsonKaydet() {
+    const data = {
+        ad_soyad: document.getElementById('garsonAd').value,
+        username: document.getElementById('garsonKullanici').value,
+        password: document.getElementById('garsonSifre').value,
+        telefon: document.getElementById('garsonTelefon').value
+    };
+    fetch('/api/garson/ekle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) location.reload();
+        else alert(d.error || 'Hata oluştu!');
+    })
+    .catch(() => alert('Hata oluştu!'));
+}
+function garsonSil(id, ad) {
+    if (!confirm(ad + ' adlı garson silinsin mi?')) return;
+    fetch('/api/garson/' + id + '/sil', { method: 'POST' })
+    .then(() => location.reload())
+    .catch(() => alert('Hata oluştu!'));
+}
+</script>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Giriş - Çay Bahçesi PRO{% endblock %}
+{% block login_content %}
+<body class="login-body">
+    <div class="login-card">
+        <div class="logo">🍵</div>
+        <h1>ÇAY BAHÇESİ PRO</h1>
+        <p class="subtitle">Profesyonel Restaurant Yönetim Sistemi</p>
+        <form method="POST" action="{{ url_for('login') }}">
+            <div class="form-group">
+                <label>Kullanıcı Adı</label>
+                <input type="text" name="username" placeholder="Kullanıcı adınızı girin" required autofocus>
+            </div>
+            <div class="form-group">
+                <label>Şifre</label>
+                <input type="password" name="password" placeholder="••••••" required>
+            </div>
+            <button type="submit" class="btn-primary">
+                <i class="fas fa-sign-in-alt"></i> Giriş Yap
+            </button>
+        </form>
+        <p class="version">v10.0 | Şifreler sifreler.md dosyasında</p>
+    </div>
+</body>
+{% endblock %}

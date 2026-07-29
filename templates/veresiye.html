@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% block title %}Veresiye - Çay Bahçesi PRO{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><span class="icon"><i class="fas fa-hand-holding-usd"></i></span> Veresiye Takibi</h1>
+    <button class="btn btn-success" onclick="musteriEkleModal()">
+        <i class="fas fa-plus"></i> Yeni Müşteri
+    </button>
+</div>
+
+<div class="card">
+    <table class="data-table">
+        <thead>
+            <tr><th>Müşteri</th><th>Telefon</th><th>Borç</th><th>Tahsilat</th><th>Kalan</th><th>İşlem</th></tr>
+        </thead>
+        <tbody>
+            {% for m in musteriler %}
+            {% set kalan = (m.toplam_borc|default(0)) - (m.toplam_tahsilat|default(0)) %}
+            <tr>
+                <td><strong>{{ m.ad_soyad }}</strong></td>
+                <td>{{ m.telefon or '-' }}</td>
+                <td style="color:var(--danger); font-weight:700;">₺{{ "%.2f"|format(m.toplam_borc|default(0)) }}</td>
+                <td style="color:var(--success);">₺{{ "%.2f"|format(m.toplam_tahsilat|default(0)) }}</td>
+                <td style="color:{% if kalan > 0 %}var(--danger){% else %}var(--success){% endif %}; font-weight:800; font-size:16px;">
+                    ₺{{ "%.2f"|format(kalan) }}
+                </td>
+                <td>
+                    <button class="btn btn-success btn-sm" onclick="tahsilatModal({{ m.id }}, '{{ m.ad_soyad }}', {{ kalan }})">
+                        <i class="fas fa-money-bill-wave"></i> Tahsilat
+                    </button>
+                    <button class="btn btn-info btn-sm" onclick="hareketlerModal({{ m.id }}, '{{ m.ad_soyad }}')">
+                        <i class="fas fa-list"></i> Hareketler
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Müşteri Modal -->
+<div class="modal-overlay" id="musteriModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-user-plus"></i> Yeni Müşteri</h3>
+            <button class="modal-close" onclick="document.getElementById('musteriModal').classList.remove('active')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Ad Soyad</label>
+                <input type="text" id="musteriAd" class="form-control" placeholder="Müşteri adı...">
+            </div>
+            <div class="form-group">
+                <label>Telefon</label>
+                <input type="text" id="musteriTelefon" class="form-control" placeholder="05XX XXX XXXX">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="document.getElementById('musteriModal').classList.remove('active')">İptal</button>
+            <button class="btn btn-success" onclick="musteriKaydet()">
+                <i class="fas fa-save"></i> Kaydet
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Tahsilat Modal -->
+<div class="modal-overlay" id="tahsilatModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-money-bill-wave"></i> Tahsilat</h3>
+            <button class="modal-close" onclick="document.getElementById('tahsilatModal').classList.remove('active')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Müşteri</label>
+                <div class="form-control" style="background:var(--gray-light);" id="tahsilatMusteri"></div>
+            </div>
+            <div class="form-group">
+                <label>Mevcut Borç</label>
+                <div class="form-control" style="background:rgba(198,40,40,0.1); color:var(--danger); font-weight:700;" id="tahsilatBorc"></div>
+            </div>
+            <div class="form-group">
+                <label>Tahsilat Tutarı</label>
+                <input type="number" step="0.01" id="tahsilatTutar" class="form-control" placeholder="0.00">
+            </div>
+            <div class="form-group">
+                <label>Açıklama</label>
+                <input type="text" id="tahsilatAciklama" class="form-control" value="Tahsilat">
+            </div>
+            <input type="hidden" id="tahsilatId">
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="document.getElementById('tahsilatModal').classList.remove('active')">İptal</button>
+            <button class="btn btn-success" onclick="tahsilatKaydet()">
+                <i class="fas fa-check"></i> Tahsilat Al
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Hareketler Modal -->
+<div class="modal-overlay" id="hareketModal">
+    <div class="modal-content" style="max-width:600px;">
+        <div class="modal-header">
+            <h3><i class="fas fa-list"></i> Hareket Geçmişi</h3>
+            <button class="modal-close" onclick="document.getElementById('hareketModal').classList.remove('active')">&times;</button>
+        </div>
+        <div class="modal-body" id="hareketBody">
+            <p style="text-align:center; color:var(--gray);">Yükleniyor...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+function musteriEkleModal() {
+    document.getElementById('musteriModal').classList.add('active');
+}
+function musteriKaydet() {
+    const data = {
+        ad_soyad: document.getElementById('musteriAd').value,
+        telefon: document.getElementById('musteriTelefon').value
+    };
+    fetch('/api/veresiye/ekle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(d => { if (d.success) location.reload(); else alert('Hata!'); })
+    .catch(() => alert('Hata oluştu!'));
+}
+
+function tahsilatModal(id, ad, borc) {
+    document.getElementById('tahsilatId').value = id;
+    document.getElementById('tahsilatMusteri').textContent = ad;
+    document.getElementById('tahsilatBorc').textContent = '₺' + borc.toFixed(2);
+    document.getElementById('tahsilatTutar').value = borc.toFixed(2);
+    document.getElementById('tahsilatModal').classList.add('active');
+}
+
+function tahsilatKaydet() {
+    const id = document.getElementById('tahsilatId').value;
+    const tutar = parseFloat(document.getElementById('tahsilatTutar').value);
+    if (!tutar || tutar <= 0) { alert('Geçerli tutar girin!'); return; }
+    fetch('/api/veresiye/' + id + '/tahsilat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tutar: tutar, aciklama: document.getElementById('tahsilatAciklama').value })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) location.reload();
+        else alert(d.error || 'Hata oluştu!');
+    })
+    .catch(() => alert('Hata oluştu!'));
+}
+
+function hareketlerModal(id, ad) {
+    document.getElementById('hareketModal').classList.add('active');
+    document.getElementById('hareketBody').innerHTML = '<p style="text-align:center; color:var(--gray);">Yükleniyor...</p>';
+    fetch('/api/veresiye/' + id + '/hareketler')
+    .then(r => r.json())
+    .then(d => {
+        let html = `<h4 style="margin-bottom:12px;">${ad}</h4><table class="data-table"><thead><tr><th>Tarih</th><th>Tip</th><th>Tutar</th><th>Açıklama</th></tr></thead><tbody>`;
+        if (d.hareketler && d.hareketler.length > 0) {
+            d.hareketler.forEach(h => {
+                const tipClass = h.tip === 'borc' ? 'badge-danger' : 'badge-success';
+                const tipText = h.tip === 'borc' ? 'Borç' : 'Tahsilat';
+                html += `<tr><td>${h.created_at}</td><td><span class="badge ${tipClass}">${tipText}</span></td><td>₺${parseFloat(h.tutar).toFixed(2)}</td><td>${h.aciklama}</td></tr>`;
+            });
+        } else {
+            html += '<tr><td colspan="4" style="text-align:center;">Hareket bulunmuyor.</td></tr>';
+        }
+        html += '</tbody></table>';
+        document.getElementById('hareketBody').innerHTML = html;
+    })
+    .catch(() => { document.getElementById('hareketBody').innerHTML = '<p style="color:var(--danger);">Yüklenemedi!</p>'; });
+}
+</script>
+{% endblock %}

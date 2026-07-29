@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block title %}Siparis Al - Cay Bahcesi PRO{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><span class="icon"><i class="fas fa-clipboard-list"></i></span> Siparis Al</h1>
+</div>
+
+<div style="display:grid; grid-template-columns: 1fr 320px; gap:24px;">
+    <div>
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-chair"></i> Masa Sec</h3>
+            </div>
+            <div class="form-group">
+                <label>Masa</label>
+                <select id="masaSelect" class="form-control">
+                    <option value="">Masa secin...</option>
+                    {% for m in masalar %}
+                    <option value="{{ m.id }}">{{ m.masa_no }} ({{ m.durum|upper }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div id="mevcutSiparisler" style="display:none; margin-top:16px; padding:16px; background:rgba(255,111,0,0.05); border-radius:8px; border:2px solid var(--accent);">
+                <p style="font-weight:700; color:var(--accent); margin-bottom:8px;"><i class="fas fa-info-circle"></i> Bu masada mevcut siparisler var. Yeni urunler ekleyebilirsiniz.</p>
+                <div id="mevcutListe"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-utensils"></i> Urunler</h3>
+            </div>
+            <div class="kategori-filter">
+                <button class="kategori-btn active" onclick="filterUrun('all')">Tumu</button>
+                {% for k in kategoriler %}
+                <button class="kategori-btn" onclick="filterUrun('{{ k.id }}')" style="border-color:{{ k.renk }}; color:{{ k.renk }};">{{ k.ad }}</button>
+                {% endfor %}
+            </div>
+            <div class="urun-grid" id="urunGrid">
+                {% for u in urunler %}
+                <div class="urun-card" data-kat="{{ u.kategori_id }}" data-id="{{ u.id }}" data-ad="{{ u.ad }}" data-fiyat="{{ u.fiyat }}" onclick="sepeteEkle({{ u.id }}, '{{ u.ad }}', {{ u.fiyat }})">
+                    <div class="urun-ad">{{ u.ad }}</div>
+                    <div class="urun-fiyat">₺{{ "%.2f"|format(u.fiyat) }}</div>
+                    <span class="urun-kategori" style="background:{{ u.renk }}20; color:{{ u.renk }};">{{ u.kategori_ad }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div>
+        <div class="sepet-panel">
+            <h3><i class="fas fa-shopping-cart"></i> Sepet</h3>
+            <div id="sepetItems">
+                <p style="text-align:center; color:var(--gray); padding:20px;">Henuz urun eklenmedi</p>
+            </div>
+            <div class="sepet-total" id="sepetTotal" style="display:none;">
+                <span>Toplam:</span>
+                <span id="totalPrice">₺0.00</span>
+            </div>
+            <div class="form-group" style="margin-top:16px;">
+                <label>Notlar</label>
+                <textarea id="siparisNot" class="form-control" rows="2" placeholder="Ozel istekler..."></textarea>
+            </div>
+            <button class="btn btn-primary btn-lg" style="width:100%; margin-top:12px;" onclick="siparisGonder()" id="btnSiparis">
+                <i class="fas fa-paper-plane"></i> Siparisi Gonder
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+let sepet = {};
+
+document.getElementById('masaSelect').addEventListener('change', async function() {
+    const masaId = this.value;
+    const mevcutDiv = document.getElementById('mevcutSiparisler');
+    const mevcutListe = document.getElementById('mevcutListe');
+    if (!masaId) { mevcutDiv.style.display = 'none'; return; }
+    try {
+        const res = await fetch('/api/masa/' + masaId + '/detay');
+        const data = await res.json();
+        if (data.siparisler && data.siparisler.length > 0) {
+            mevcutDiv.style.display = 'block';
+            let html = '<table class="data-table" style="font-size:13px;"><thead><tr><th>Urun</th><th>Adet</th><th>Tutar</th></tr></thead><tbody>';
+            data.siparisler.forEach(s => {
+                html += `<tr><td>${s.urun_ad}</td><td>${s.adet}</td><td>₺${(s.fiyat * s.adet).toFixed(2)}</td></tr>`;
+            });
+            html += '</tbody></table>';
+            mevcutListe.innerHTML = html;
+        } else {
+            mevcutDiv.style.display = 'none';
+        }
+    } catch(e) { mevcutDiv.style.display = 'none'; }
+});
+
+function filterUrun(katId) {
+    document.querySelectorAll('.kategori-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    document.querySelectorAll('.urun-card').forEach(c => {
+        c.style.display = (katId === 'all' || c.dataset.kat === katId) ? 'block' : 'none';
+    });
+}
+
+function sepeteEkle(id, ad, fiyat) {
+    if (!sepet[id]) sepet[id] = { id, ad, fiyat, adet: 0 };
+    sepet[id].adet++;
+    sepetGuncelle();
+}
+
+function sepetGuncelle() {
+    const container = document.getElementById('sepetItems');
+    const keys = Object.keys(sepet);
+    if (keys.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:var(--gray); padding:20px;">Henuz urun eklenmedi</p>';
+        document.getElementById('sepetTotal').style.display = 'none';
+        return;
+    }
+    let html = '';
+    let total = 0;
+    keys.forEach(k => {
+        const item = sepet[k];
+        total += item.fiyat * item.adet;
+        html += `<div class="sepet-item">
+            <div><div class="item-name">${item.ad}</div><small style="color:var(--gray);">₺${item.fiyat.toFixed(2)} x ${item.adet}</small></div>
+            <div class="item-qty">
+                <button onclick="adetAzalt(${item.id})">−</button>
+                <span style="font-weight:700; min-width:24px; text-align:center;">${item.adet}</span>
+                <button onclick="sepeteEkle(${item.id}, '${item.ad}', ${item.fiyat})">+</button>
+            </div>
+        </div>`;
+    });
+    container.innerHTML = html;
+    document.getElementById('totalPrice').textContent = '₺' + total.toFixed(2);
+    document.getElementById('sepetTotal').style.display = 'flex';
+}
+
+function adetAzalt(id) {
+    if (sepet[id]) {
+        sepet[id].adet--;
+        if (sepet[id].adet <= 0) delete sepet[id];
+        sepetGuncelle();
+    }
+}
+
+async function siparisGonder() {
+    const masaId = document.getElementById('masaSelect').value;
+    if (!masaId) { alert('Lutfen masa secin!'); return; }
+    const keys = Object.keys(sepet);
+    if (keys.length === 0) { alert('Sepet bos!'); return; }
+    const urunler = keys.map(k => ({ urun_id: parseInt(k), adet: sepet[k].adet }));
+    const notlar = document.getElementById('siparisNot').value;
+    try {
+        const res = await fetch('/api/siparis/ekle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ masa_id: parseInt(masaId), urunler, notlar })
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert('Siparis gonderildi!');
+            sepet = {};
+            sepetGuncelle();
+            document.getElementById('siparisNot').value = '';
+            document.getElementById('masaSelect').value = '';
+            document.getElementById('mevcutSiparisler').style.display = 'none';
+        } else {
+            alert('Hata olustu!');
+        }
+    } catch(e) { alert('Baglanti hatasi!'); }
+}
+</script>
+{% endblock %}

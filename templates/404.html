@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Sayfa Bulunamadı{% endblock %}
+{% block content %}
+<div style="text-align:center; padding:80px 20px;">
+    <div style="font-size:80px; margin-bottom:20px;">😕</div>
+    <h1 style="font-size:32px; color:var(--primary-dark); margin-bottom:12px;">404 - Sayfa Bulunamadı</h1>
+    <p style="color:var(--gray); margin-bottom:24px;">Aradığınız sayfa mevcut değil veya taşınmış olabilir.</p>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-primary">
+        <i class="fas fa-home"></i> Ana Sayfaya Dön
+    </a>
+</div>
+{% endblock %}

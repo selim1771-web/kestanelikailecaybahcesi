@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bildirimler Paneli</title>
+  <style>
+    body { margin:0; font-family: Arial, sans-serif; background:#f4f7fb; color:#1f2937; }
+    .wrap { max-width:1200px; margin:0 auto; padding:24px; }
+    .top { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:18px; flex-wrap:wrap; }
+    .box { background:#fff; border:1px solid #e5e7eb; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,.06); }
+    .left { padding:18px; width:280px; }
+    .right { padding:10px; flex:1; }
+    .grid { display:grid; grid-template-columns:280px 1fr; gap:16px; }
+    .num { font-size:42px; font-weight:800; margin:8px 0; }
+    .btn { border:0; border-radius:12px; padding:11px 14px; font-weight:700; cursor:pointer; }
+    .btn-blue { background:#2563eb; color:#fff; }
+    .btn-gray { background:#fff; border:1px solid #d1d5db; }
+    .btn-green { background:#16a34a; color:#fff; }
+    .item { border:1px solid #e5e7eb; border-radius:14px; padding:14px; margin:10px; background:#fff; }
+    .row { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+    .pill { display:inline-block; padding:6px 10px; border-radius:999px; background:#eff6ff; color:#2563eb; font-size:12px; font-weight:800; }
+    .meta { color:#6b7280; font-size:13px; margin-top:4px; }
+    .type { display:inline-block; padding:7px 12px; border-radius:999px; font-size:12px; font-weight:800; margin-top:10px; }
+    .type.garson { background:#fff7ed; color:#c2410c; }
+    .type.hesap { background:#ecfdf5; color:#15803d; }
+    .empty { padding:70px 20px; text-align:center; color:#6b7280; }
+    .toast { position:fixed; right:20px; bottom:20px; background:#111827; color:#fff; padding:12px 14px; border-radius:12px; opacity:0; transform:translateY(10px); transition:.2s; pointer-events:none; }
+    .toast.show { opacity:1; transform:translateY(0); }
+    @media (max-width: 900px){ .grid { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <h1 style="margin:0;">Bildirimler Paneli</h1>
+        <div style="color:#6b7280; margin-top:4px;">Garson çağırma ve hesap istekleri</div>
+      </div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn btn-gray" onclick="refreshList()">Yenile</button>
+        <button class="btn btn-blue" onclick="closeAll()">Tümünü kapat</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="box left">
+        <div style="color:#6b7280;">Bekleyen bildirim</div>
+        <div class="num" id="waitingCount">{{ bekleyen }}</div>
+        <div style="color:#6b7280; font-size:13px;">Panel 5 saniyede bir otomatik yenilenir.</div>
+      </div>
+
+      <div class="box right">
+        <div id="listArea">
+          {% if bildirimler %}
+            {% for b in bildirimler %}
+              <div class="item" data-id="{{ b.id }}">
+                <div class="row">
+                  <div>
+                    <div class="pill">Masa {{ b.masa_no }} · {{ b.kat_adi }}</div>
+                    <div class="meta">
+                      {% if b.tip == 'garson' %}
+                        Garson çağırma isteği
+                      {% elif b.tip == 'hesap' %}
+                        Hesap isteği
+                      {% else %}
+                        {{ b.tip }}
+                      {% endif %}
+                    </div>
+                  </div>
+                  <div style="color:#6b7280; font-size:12px;">{{ b.created_at }}</div>
+                </div>
+                <div class="type {{ b.tip }}">{{ b.tip|upper }}</div>
+                <div style="margin-top:12px;">
+                  <button class="btn btn-green" onclick="markDone({{ b.id }})">Tamamla</button>
+                </div>
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="empty" id="emptyState">
+              <div style="font-size:48px;">✅</div>
+              <h2 style="margin:12px 0 8px;">Bekleyen bildirim yok</h2>
+              <div>Şu anda temiz.</div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const toastEl = document.getElementById('toast');
+
+    function showToast(msg){
+      toastEl.textContent = msg;
+      toastEl.classList.add('show');
+      setTimeout(() => toastEl.classList.remove('show'), 2200);
+    }
+
+    async function refreshList(){
+      try{
+        const res = await fetch('/api/bildirimler');
+        const data = await res.json();
+        const items = data.bildirimler || [];
+        document.getElementById('waitingCount').textContent = items.length;
+        const listArea = document.getElementById('listArea');
+        if(!items.length){
+          listArea.innerHTML = `
+            <div class="empty" id="emptyState">
+              <div style="font-size:48px;">✅</div>
+              <h2 style="margin:12px 0 8px;">Bekleyen bildirim yok</h2>
+              <div>Şu anda temiz.</div>
+            </div>`;
+          return;
+        }
+        listArea.innerHTML = items.map(b => `
+          <div class="item" data-id="${b.id}">
+            <div class="row">
+              <div>
+                <div class="pill">Masa ${b.masa_no} · ${b.kat_adi}</div>
+                <div class="meta">
+                  ${b.tip === 'garson' ? 'Garson çağırma isteği' : (b.tip === 'hesap' ? 'Hesap isteği' : b.tip)}
+                </div>
+              </div>
+              <div style="color:#6b7280; font-size:12px;">${b.created_at || ''}</div>
+            </div>
+            <div class="type ${b.tip}">${String(b.tip || '').toUpperCase()}</div>
+            <div style="margin-top:12px;">
+              <button class="btn btn-green" onclick="markDone(${b.id})">Tamamla</button>
+            </div>
+          </div>
+        `).join('');
+      }catch(e){
+        showToast('Yenileme hatası');
+      }
+    }
+
+    async function markDone(id){
+      try{
+        const res = await fetch(`/api/bildirim/${id}/tamamla`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'}
+        });
+        const data = await res.json();
+        if(data.success){
+          showToast('Bildirim kapatıldı');
+          refreshList();
+        }else{
+          showToast('İşlem başarısız');
+        }
+      }catch(e){
+        showToast('Bağlantı hatası');
+      }
+    }
+
+    async function closeAll(){
+      if(!confirm('Bekleyen tüm bildirimler kapatılsın mı?')) return;
+      try{
+        const res = await fetch('/api/bildirimler/tumunu_tamamla', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'}
+        });
+        const data = await res.json();
+        if(data.success){
+          showToast((data.tamamlanan || 0) + ' bildirim kapatıldı');
+          refreshList();
+        }else{
+          showToast('Toplu kapatma başarısız');
+        }
+      }catch(e){
+        showToast('Bağlantı hatası');
+      }
+    }
+
+    setInterval(refreshList, 5000);
+  </script>
+</body>
+</html>

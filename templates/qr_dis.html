@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Dış Sipariş QR Kodu{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><span class="icon"><i class="fas fa-qrcode"></i></span> Dış Sipariş QR Kodu</h1>
+</div>
+
+<div class="card" style="max-width:900px;">
+    <div class="card-header">
+        <h3><i class="fas fa-link"></i> Şifresiz Paket / Kurye Menü</h3>
+    </div>
+    <div style="padding:16px;">
+        <p style="margin-top:0;color:var(--gray);">
+            Bu QR kod dışarıdan gelen müşteriyi doğrudan şifresiz menüye götürür.
+        </p>
+
+        <div style="display:grid;grid-template-columns:260px 1fr;gap:18px;align-items:start;">
+            <div style="text-align:center; display:flex; justify-content:center;">
+                <!-- Statik resim yerine dinamik QR alanı eklendi -->
+                <div id="disQrCode" style="border:1px solid #e5e7eb;border-radius:18px;padding:12px;background:#fff;"></div>
+            </div>
+            <div>
+                <label style="font-weight:800;display:block;margin-bottom:6px;">Hedef Adres</label>
+                <div style="word-break:break-all;padding:12px 14px;border:1px solid #e5e7eb;border-radius:14px;background:#f9fafb;">
+                    {{ public_menu_url or 'https://kestanelikcaybahcem.onrender.com/dis/menu' }}
+                </div>
+
+                <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;">
+                    <a href="{{ public_menu_url or 'https://kestanelikcaybahcem.onrender.com/dis/menu' }}" target="_blank" class="btn btn-primary">
+                        <i class="fas fa-external-link-alt"></i> Menüyü Aç
+                    </a>
+                    <!-- Yazdırma kolaylığı için yeni buton eklendi -->
+                    <button class="btn btn-secondary" onclick="window.print()">
+                        <i class="fas fa-print"></i> Sayfayı Yazdır
+                    </button>
+                </div>
+
+                <div style="margin-top:16px;color:var(--gray);font-size:14px;line-height:1.5;">
+                    Linki değiştirmek için <strong>Ayarlar</strong> içindeki <strong>Dış Sipariş Linki</strong> alanını düzenle.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- qrcode.js kütüphanesi qr_yazdir.html'den alındı -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+    // Sunucudan gelen dış sipariş linkini alıyoruz
+    var publicUrl = "{{ public_menu_url or 'https://kestanelikcaybahcem.onrender.com/dis/menu' }}";
+
+    // Dinamik QR kodu oluşturuyoruz
+    new QRCode(document.getElementById('disQrCode'), {
+        text: publicUrl,
+        width: 214, // Padding boşluklarıyla beraber ortalama 240px görünüm için ayarlandı
+        height: 214,
+        colorDark: "#1a237e",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.M
+    });
+</script>
+{% endblock %}

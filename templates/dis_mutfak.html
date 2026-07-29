@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dış Sipariş Mutfağı</title>
+  <style>
+    body{margin:0;font-family:Arial,sans-serif;background:#f4f7fb;color:#111827}
+    .wrap{max-width:1300px;margin:0 auto;padding:16px}
+    .top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    .card{background:#fff;border:1px solid #e5e7eb;border-radius:18px;box-shadow:0 10px 30px rgba(0,0,0,.06);padding:14px}
+    .pill{display:inline-block;padding:7px 10px;border-radius:999px;background:#eff6ff;color:#2563eb;font-size:12px;font-weight:800}
+    .meta{color:#6b7280;font-size:13px;line-height:1.5}
+    .status{display:inline-flex;padding:7px 10px;border-radius:999px;font-size:12px;font-weight:800}
+    .bekliyor{background:#fff7ed;color:#c2410c}
+    .hazirlaniyor{background:#ecfeff;color:#0e7490}
+    .hazir{background:#ecfdf5;color:#166534}
+    .kurye_teslim{background:#eef2ff;color:#3730a3}
+    .teslim_edildi{background:#f5f3ff;color:#6b21a8}
+    .btn{border:0;border-radius:12px;padding:10px 12px;font-weight:800;cursor:pointer;margin-right:8px;margin-top:8px}
+    .b1{background:#2563eb;color:#fff}
+    .b2{background:#16a34a;color:#fff}
+    .b3{background:#111827;color:#fff}
+    .item{padding:10px 0;border-top:1px solid #eef2f7}
+    .small{font-size:13px;color:#6b7280}
+    @media (max-width: 900px){ .grid{grid-template-columns:1fr} }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <h1 style="margin:0;">Dış Sipariş Mutfağı</h1>
+        <div class="small">Hazırlanıyor · Hazır · Kurye'ye teslim · Teslim edildi</div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <a href="/dis/kurye" class="btn b3" style="text-decoration:none;display:inline-block;">Kurye Paneli</a>
+        <a href="/tahsilatlar" class="btn b3" style="text-decoration:none;display:inline-block;">Tahsilatlar</a>
+      </div>
+    </div>
+
+    <div class="grid">
+      {% for s in siparisler %}
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+          <div>
+            <span class="pill">#{{ s.id }}</span>
+            <div style="margin-top:8px;font-size:18px;font-weight:900;">{{ s.musteri_ad_soyad }}</div>
+            <div class="meta">{{ s.telefon }} · {{ s.teslim_adres }}</div>
+            <div class="meta">Ödeme: {{ s.odeme_tipi|upper }} · Tahsilat: {{ s.tahsilat_durumu|upper }}</div>
+            {% if s.odeme_tipi == 'nakit' %}
+              <div class="meta">Nakit verilen: ₺{{ '%.2f'|format(s.nakit_verilen or 0) }} · Para üstü: ₺{{ '%.2f'|format(s.para_ustu or 0) }}</div>
+            {% endif %}
+          </div>
+          <div class="status {{ s.durum }}">{{ s.durum|upper }}</div>
+        </div>
+
+        {% for u in s.urunler %}
+          <div class="item">
+            <div style="display:flex;justify-content:space-between;gap:10px;">
+              <div>
+                <strong>{{ u.urun_ad }}</strong>
+                <div class="small">EN: {{ u.urun_ad_en }} · AR: {{ u.urun_ad_ar }}</div>
+              </div>
+              <div>{{ u.adet }} x ₺{{ '%.2f'|format(u.fiyat) }}</div>
+            </div>
+          </div>
+        {% endfor %}
+
+        <div style="margin-top:10px;">
+          <button class="btn b1" onclick="setStatus({{ s.id }}, 'hazirlaniyor')">Hazırlanıyor</button>
+          <button class="btn b2" onclick="setStatus({{ s.id }}, 'hazir')">Hazır</button>
+          <button class="btn b3" onclick="setStatus({{ s.id }}, 'kurye_teslim')">Kurye'ye Teslim</button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <script>
+    async function setStatus(id, durum){
+      const res = await fetch(`/api/dis/siparis/${id}/durum`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({durum})
+      });
+      const data = await res.json();
+      if (data.success) location.reload();
+      else alert(data.error || 'İşlem başarısız');
+    }
+    setInterval(() => location.reload(), 15000);
+  </script>
+</body>
+</html>

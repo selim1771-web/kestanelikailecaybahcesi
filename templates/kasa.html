@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}Kasa - Çay Bahçesi PRO{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><span class="icon"><i class="fas fa-cash-register"></i></span> Kasa Yönetimi</h1>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-filter"></i> Tarih Filtresi</h3>
+    </div>
+    <form method="GET" action="{{ url_for('kasa') }}" class="tarih-filter">
+        <label>Başlangıç:</label>
+        <input type="date" name="baslangic" value="{{ baslangic }}">
+        <label>Bitiş:</label>
+        <input type="date" name="bitis" value="{{ bitis }}">
+        <button type="submit" class="btn btn-primary btn-sm">
+            <i class="fas fa-search"></i> Filtrele
+        </button>
+        <a href="{{ url_for('kasa') }}" class="btn btn-secondary btn-sm">
+            <i class="fas fa-undo"></i> Bugün
+        </a>
+    </form>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card success">
+        <div class="stat-icon"><i class="fas fa-arrow-up"></i></div>
+        <div class="stat-value">₺{{ "%.2f"|format(toplam_gelir) }}</div>
+        <div class="stat-label">Toplam Gelir</div>
+    </div>
+    <div class="stat-card danger">
+        <div class="stat-icon"><i class="fas fa-arrow-down"></i></div>
+        <div class="stat-value">₺{{ "%.2f"|format(toplam_gider) }}</div>
+        <div class="stat-label">Toplam Gider</div>
+    </div>
+    <div class="stat-card accent">
+        <div class="stat-icon"><i class="fas fa-money-bill-wave"></i></div>
+        <div class="stat-value">₺{{ "%.2f"|format(nakit_gelir) }}</div>
+        <div class="stat-label">Nakit</div>
+    </div>
+    <div class="stat-card info">
+        <div class="stat-icon"><i class="fas fa-credit-card"></i></div>
+        <div class="stat-value">₺{{ "%.2f"|format(kredi_gelir) }}</div>
+        <div class="stat-label">Kredi Kartı</div>
+    </div>
+    <div class="stat-card warning">
+        <div class="stat-icon"><i class="fas fa-hand-holding-usd"></i></div>
+        <div class="stat-value">₺{{ "%.2f"|format(veresiye_gelir) }}</div>
+        <div class="stat-label">Veresiye</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon"><i class="fas fa-balance-scale"></i></div>
+        <div class="stat-value">₺{{ "%.2f"|format(toplam_gelir - toplam_gider) }}</div>
+        <div class="stat-label">Net Bakiye</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-list"></i> Hareketler</h3>
+        {% if session.role == 'admin' %}
+        <button class="btn btn-success btn-sm" onclick="giderEkle()">
+            <i class="fas fa-plus"></i> Gider Ekle
+        </button>
+        {% endif %}
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Tarih</th>
+                <th>Tip</th>
+                <th>Tutar</th>
+                <th>Ödeme</th>
+                <th>Açıklama</th>
+                <th>Garson</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for h in hareketler %}
+            <tr>
+                <td>{{ h.created_at }}</td>
+                <td>
+                    {% if h.tip == 'gelir' %}
+                        <span class="badge badge-success"><i class="fas fa-arrow-up"></i> Gelir</span>
+                    {% else %}
+                        <span class="badge badge-danger"><i class="fas fa-arrow-down"></i> Gider</span>
+                    {% endif %}
+                </td>
+                <td><strong>₺{{ "%.2f"|format(h.tutar) }}</strong></td>
+                <td>{{ h.odeme_tipi|capitalize }}</td>
+                <td>{{ h.aciklama }}</td>
+                <td>{{ h.garson_adi or '-' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" style="text-align:center; color:var(--gray);">Bu tarih aralığında hareket bulunmuyor.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Gider Modal -->
+<div class="modal-overlay" id="giderModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-minus-circle"></i> Gider Ekle</h3>
+            <button class="modal-close" onclick="document.getElementById('giderModal').classList.remove('active')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Tutar</label>
+                <input type="number" step="0.01" id="giderTutar" class="form-control" placeholder="0.00">
+            </div>
+            <div class="form-group">
+                <label>Açıklama</label>
+                <input type="text" id="giderAciklama" class="form-control" placeholder="Gider açıklaması...">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="document.getElementById('giderModal').classList.remove('active')">İptal</button>
+            <button class="btn btn-danger" onclick="giderKaydet()">
+                <i class="fas fa-save"></i> Kaydet
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+function giderEkle() {
+    document.getElementById('giderModal').classList.add('active');
+}
+
+function giderKaydet() {
+    const tutar = parseFloat(document.getElementById('giderTutar').value);
+    const aciklama = document.getElementById('giderAciklama').value;
+    if (!tutar || tutar <= 0) { alert('Geçerli tutar girin!'); return; }
+    fetch('/api/kasa/ekle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tip: 'gider', tutar: tutar, aciklama: aciklama, odeme_tipi: 'nakit' })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) { location.reload(); }
+        else { alert('Yetkisiz işlem!'); }
+    })
+    .catch(() => alert('Hata oluştu!'));
+}
+</script>
+{% endblock %}

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sipariş Durumu</title>
+  <style>
+    body{margin:0;font-family:Arial,sans-serif;background:#f4f7fb;color:#111827}
+    .wrap{max-width:860px;margin:0 auto;padding:14px}
+    .top{background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;border-radius:22px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.08)}
+    .card{background:#fff;border:1px solid #e5e7eb;border-radius:18px;box-shadow:0 10px 30px rgba(0,0,0,.06);padding:14px;margin-top:14px}
+    .status{display:inline-block;padding:7px 10px;border-radius:999px;font-size:12px;font-weight:800;margin-top:10px;background:#eff6ff;color:#1d4ed8}
+    .muted{color:#6b7280;font-size:13px;line-height:1.5}
+    .item{padding:10px 0;border-top:1px solid #eef2f7}
+    .item:first-child{border-top:0}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div style="font-weight:900;font-size:22px;">Sipariş #{{ siparis.id }}</div>
+    <div style="opacity:.95;">{{ siparis.musteri_ad_soyad }} · {{ siparis.durum|upper }}</div>
+    <div class="muted" style="color:rgba(255,255,255,.9);">Adres: {{ siparis.teslim_adres }}</div>
+    <div class="muted" style="color:rgba(255,255,255,.9);">Ödeme: {{ siparis.odeme_tipi|upper }}</div>
+  </div>
+
+  <div class="card">
+    {% for u in urunler %}
+      <div class="item">
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
+          <div>
+            <div style="font-weight:900;">{{ u.urun_ad }}</div>
+            <div class="muted">EN: {{ u.urun_ad_en }}</div>
+            <div class="muted">AR: {{ u.urun_ad_ar }}</div>
+          </div>
+          <div>{{ u.adet }} adet</div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+</body>
+</html>

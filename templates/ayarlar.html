@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% block title %}Ayarlar - Çay Bahçesi PRO{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><span class="icon"><i class="fas fa-cog"></i></span> İşletme Ayarları</h1>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-store"></i> İşletme Bilgileri</h3>
+    </div>
+    <div class="form-row">
+        <div class="form-group">
+            <label>İşletme Adı</label>
+            <input type="text" id="isletmeAdi" class="form-control" value="{{ settings.isletme_adi }}">
+        </div>
+        <div class="form-group">
+            <label>Vergi Dairesi</label>
+            <input type="text" id="vergiDairesi" class="form-control" value="{{ settings.vergi_dairesi or '' }}">
+        </div>
+        <div class="form-group">
+            <label>Vergi No</label>
+            <input type="text" id="vergiNo" class="form-control" value="{{ settings.vergi_no or '' }}">
+        </div>
+        <div class="form-group">
+            <label>Telefon</label>
+            <input type="text" id="telefon" class="form-control" value="{{ settings.telefon or '' }}">
+        </div>
+        <div class="form-group" style="grid-column: 1 / -1;">
+            <label>Adres</label>
+            <textarea id="adres" class="form-control" rows="2">{{ settings.adres or '' }}</textarea>
+        </div>
+        <div class="form-group" style="grid-column: 1 / -1;">
+            <label>Fiş İyi Niyet Mesajı</label>
+            <input type="text" id="iyiNiyet" class="form-control" value="{{ settings.iyi_niyet or '' }}">
+        </div>
+        <div class="form-group" style="grid-column: 1 / -1;">
+            <label>Sunucu Adresi (QR Kod URL)</label>
+            <input type="text" id="hostUrl" class="form-control" value="{{ settings.host_url or 'http://localhost:8000' }}" placeholder="http://192.168.1.100:8000">
+            <small style="color:var(--gray); display:block; margin-top:4px;"><i class="fas fa-info-circle"></i> Garsonların ve QR kodların bağlanacağı adres. Örn: http://192.168.1.5:8000</small>
+        </div>
+        <div class="form-group" style="grid-column: 1 / -1;">
+            <label>Dış Sipariş Linki</label>
+            <input type="text" id="publicMenuUrl" class="form-control" value="{{ settings.public_menu_url or 'https://kestanelikcaybahcem.onrender.com/dis/menu' }}" placeholder="https://kestanelikcaybahcem.onrender.com/dis/menu">
+            <small style="color:var(--gray); display:block; margin-top:4px;"><i class="fas fa-info-circle"></i> Dış QR kodun götüreceği şifresiz menü adresi.</small>
+        </div>
+        <div class="form-group">
+            <label>Max Garson Sayısı</label>
+            <input type="number" id="maxGarson" class="form-control" value="{{ settings.max_garson }}">
+        </div>
+    </div>
+    <div style="text-align:right; margin-top:16px;">
+        <button class="btn btn-success" onclick="ayarlariKaydet()">
+            <i class="fas fa-save"></i> Kaydet
+        </button>
+    </div>
+</div>
+
+<div style="text-align:right; margin-bottom:16px;">
+    <a href="{{ url_for('qr_yazdir') }}" target="_blank" class="btn btn-primary">
+        <i class="fas fa-qrcode"></i> Tüm QR Kodları Yazdır
+    </a>
+</div>
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-layer-group"></i> Kat ve Masa Yönetimi</h3>
+        <button class="btn btn-success btn-sm" onclick="katEkleModal()">
+            <i class="fas fa-plus"></i> Yeni Kat Ekle
+        </button>
+    </div>
+    <table class="data-table">
+        <thead><tr><th>Sıra</th><th>Kat Adı</th><th>Masa Sayısı</th><th>İşlem</th></tr></thead>
+        <tbody>
+            {% for k in katlar %}
+            <tr>
+                <td>{{ k.sira + 1 }}</td>
+                <td><strong>{{ k.kat_adi }}</strong></td>
+                <td>
+                    {% set masa_sayisi = 0 %}
+                    {% for m in masalar %}
+                        {% if m.kat_id == k.id %}{% set masa_sayisi = masa_sayisi + 1 %}{% endif %}
+                    {% endfor %}
+                    {{ masa_sayisi }}
+                </td>
+                <td>
+                    <button class="btn btn-danger btn-sm" onclick="katSil({{ k.id }}, '{{ k.kat_adi }}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-key"></i> Şifre Yönetimi</h3>
+    </div>
+    <p style="color:var(--gray); margin-bottom:16px;">
+        <i class="fas fa-info-circle"></i> Şifreler otomatik olarak <strong>sifreler.md</strong> dosyasına kaydedilir.
+    </p>
+    <table class="data-table">
+        <thead><tr><th>Kullanıcı</th><th>Rol</th><th>Ad Soyad</th><th>Yeni Şifre</th></tr></thead>
+        <tbody>
+            {% for a in adminler %}
+            <tr>
+                <td><strong>{{ a.username }}</strong></td>
+                <td><span class="badge badge-primary">{{ a.role|capitalize }}</span></td>
+                <td>{{ a.ad_soyad }}</td>
+                <td>
+                    <div style="display:flex; gap:8px;">
+                        <input type="text" id="sifre_{{ a.id }}" class="form-control" placeholder="Yeni şifre" style="width:150px;">
+                        <button class="btn btn-primary btn-sm" onclick="sifreDegistir({{ a.id }})">
+                            <i class="fas fa-key"></i> Değiştir
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Kat Modal -->
+<div class="modal-overlay" id="katModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-plus"></i> Yeni Kat Ekle</h3>
+            <button class="modal-close" onclick="document.getElementById('katModal').classList.remove('active')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Kat Adı</label>
+                <input type="text" id="katAdi" class="form-control" placeholder="Örn: Bahçe, Teras, 3. Kat">
+            </div>
+            <div class="form-group">
+                <label>Masa Sayısı</label>
+                <input type="number" id="katMasaSayisi" class="form-control" value="10" min="1" max="100">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="document.getElementById('katModal').classList.remove('active')">İptal</button>
+            <button class="btn btn-success" onclick="katKaydet()">
+                <i class="fas fa-save"></i> Kaydet
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+function ayarlariKaydet() {
+    const data = {
+        isletme_adi: document.getElementById('isletmeAdi').value,
+        vergi_dairesi: document.getElementById('vergiDairesi').value,
+        vergi_no: document.getElementById('vergiNo').value,
+        telefon: document.getElementById('telefon').value,
+        adres: document.getElementById('adres').value,
+        iyi_niyet: document.getElementById('iyiNiyet').value,
+        host_url: document.getElementById('hostUrl').value,
+        public_menu_url: document.getElementById('publicMenuUrl').value,
+        max_garson: parseInt(document.getElementById('maxGarson').value)
+    };
+    fetch('/api/ayarlar/guncelle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(d => { if (d.success) { alert('Ayarlar kaydedildi!'); location.reload(); } else alert('Hata!'); })
+    .catch(() => alert('Hata oluştu!'));
+}
+
+function katEkleModal() {
+    document.getElementById('katModal').classList.add('active');
+}
+function katKaydet() {
+    const data = {
+        kat_adi: document.getElementById('katAdi').value,
+        masa_sayisi: parseInt(document.getElementById('katMasaSayisi').value)
+    };
+    fetch('/api/kat/ekle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) { alert('Kat eklendi!'); location.reload(); }
+        else alert(d.error || 'Hata oluştu!');
+    })
+    .catch(() => alert('Hata oluştu!'));
+}
+function katSil(id, ad) {
+    if (!confirm(ad + ' katı silinsin mi?')) return;
+    fetch('/api/kat/' + id + '/sil', { method: 'POST' })
+    .then(() => location.reload())
+    .catch(() => alert('Hata oluştu!'));
+}
+function sifreDegistir(id) {
+    const sifre = document.getElementById('sifre_' + id).value;
+    if (!sifre) { alert('Şifre girin!'); return; }
+    fetch('/api/sifre/degistir', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: id, yeni_sifre: sifre })
+    })
+    .then(r => r.json())
+    .then(d => { if (d.success) { alert('Şifre değiştirildi! sifreler.md dosyası güncellendi.'); location.reload(); } else alert('Hata!'); })
+    .catch(() => alert('Hata oluştu!'));
+}
+</script>
+{% endblock %}

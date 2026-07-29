@@ -1,0 +1,23 @@
+KURULUM NOTU
+
+1) Eski çalışan Flask sunucusunu kapat.
+2) Bu klasörde sanal ortam aç:
+   python -m venv .venv
+   .venv\Scripts\activate
+
+3) Gerekli paketleri kur:
+   pip install flask qrcode pillow
+
+4) Uygulamayı başlat:
+   python app.py
+
+5) Tarayıcıdan aç:
+   http://localhost:8000
+
+Yeni sayfalar:
+- /bildirimler
+- /dis/menu
+- /dis/mutfak
+- /dis/kurye
+- /tahsilatlar
+- /qr/dis

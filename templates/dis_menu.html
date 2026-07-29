@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ settings.isletme_adi if settings else 'Dış Sipariş' }} · Paket Menü</title>
+  <style>
+    body{margin:0;font-family:Arial,sans-serif;background:#f4f7fb;color:#111827}
+    .wrap{max-width:1200px;margin:0 auto;padding:14px}
+    .hero{background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;border-radius:22px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.08)}
+    .grid{display:grid;grid-template-columns:1fr 360px;gap:14px;margin-top:14px}
+    .card{background:#fff;border:1px solid #e5e7eb;border-radius:18px;box-shadow:0 10px 30px rgba(0,0,0,.06);padding:14px}
+    .item{border:1px solid #e5e7eb;border-radius:16px;padding:12px;margin:10px 0;background:#fafafa}
+    .btn{border:0;border-radius:12px;padding:10px 12px;font-weight:800;cursor:pointer}
+    .b1{background:#2563eb;color:#fff}
+    .b2{background:#16a34a;color:#fff}
+    .b3{background:#fff;border:1px solid #d1d5db}
+    input,textarea,select{width:100%;border:1px solid #d1d5db;border-radius:12px;padding:11px 12px;box-sizing:border-box}
+    textarea{min-height:82px;resize:vertical}
+    .pill{display:inline-block;padding:7px 10px;border-radius:999px;background:#eff6ff;color:#2563eb;font-size:12px;font-weight:800;margin:0 6px 6px 0}
+    .small{font-size:12px;opacity:.72}
+    .tot{font-size:24px;font-weight:900}
+    @media(max-width:900px){.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <h1 style="margin:0 0 6px;">{{ settings.isletme_adi if settings else 'Dış Sipariş' }} · Paket / Kurye Menü</h1>
+    <div style="opacity:.95;">Şifresiz giriş. Ad, telefon, adres ve ödeme bilgisi ile sipariş ver.</div>
+    <div style="margin-top:10px;">
+      <span class="pill">TR</span><span class="pill">EN</span><span class="pill">AR</span>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2 style="margin-top:0;">Menü</h2>
+      {% for k in kategoriler %}
+        <div class="item">
+          <div style="font-weight:900;font-size:18px;">{{ k.ad }}</div>
+          <div class="small">EN: {{ k.ad_en or k.ad }} · AR: {{ k.ad_ar or k.ad }}</div>
+          {% for u in urunler if u.kategori_id == k.id %}
+            <div style="margin-top:10px;padding-top:10px;border-top:1px solid #eee;">
+              <div style="display:flex;justify-content:space-between;gap:10px;">
+                <div>
+                  <div style="font-weight:800;">{{ u.ad }}</div>
+                  <div class="small">EN: {{ u.ad_en or u.ad }}</div>
+                  <div class="small">AR: {{ u.ad_ar or u.ad }}</div>
+                </div>
+                <div style="font-weight:900;">₺{{ '%.2f'|format(u.fiyat) }}</div>
+              </div>
+              <div style="margin-top:8px;font-size:13px;line-height:1.4;">
+                <div><strong>TR:</strong> {{ u.aciklama or '-' }}</div>
+                <div><strong>EN:</strong> {{ u.aciklama_en or u.aciklama or '-' }}</div>
+                <div><strong>AR:</strong> {{ u.aciklama_ar or u.aciklama or '-' }}</div>
+              </div>
+              <button class="btn b1 add" data-id="{{ u.id }}" style="margin-top:10px;">Sepete Ekle</button>
+            </div>
+          {% endfor %}
+        </div>
+      {% endfor %}
+    </div>
+
+    <div class="card" style="position:sticky;top:12px;">
+      <h2 style="margin-top:0;">Sipariş Bilgileri</h2>
+      <div id="cartArea" style="border:1px dashed #d1d5db;border-radius:14px;padding:12px;min-height:80px;background:#fafafa;">Sepet boş.</div>
+      <div style="margin-top:12px;"><label>Ad Soyad</label><input id="ad_soyad" placeholder="Ad Soyad"></div>
+      <div style="margin-top:10px;"><label>Telefon</label><input id="telefon" placeholder="Telefon"></div>
+      <div style="margin-top:10px;"><label>Teslimat Adresi</label><textarea id="adres" placeholder="Adres"></textarea></div>
+      <div style="margin-top:10px;"><label>Ödeme Şekli</label>
+        <select id="odeme_tipi" onchange="cashToggle()">
+          <option value="nakit">Nakit</option>
+          <option value="kart">Kart</option>
+        </select>
+      </div>
+      <div id="cashBox" style="margin-top:10px;"><label>Nakit Verilen</label><input id="nakit_verilen" type="number" step="0.01" min="0" placeholder="0.00" oninput="render()"></div>
+      <div id="cashHint" style="display:none;margin-top:10px;padding:10px;border-radius:12px;background:#fff7ed;color:#9a3412;">Kart seçildi. Teslimatta POS ile tahsilat yapılacak.</div>
+      <div style="margin-top:10px;"><label>Not</label><textarea id="notlar" placeholder="Ek not..."></textarea></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;"><div>Toplam</div><div class="tot" id="totalText">₺0.00</div></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;display:none;" id="changeRow"><div>Para Üstü</div><div class="tot" id="changeText">₺0.00</div></div>
+      <button class="btn b2" id="sendBtn" style="width:100%;margin-top:12px;">Siparişi Gönder</button>
+      <div class="small" style="margin-top:8px;">QR: {{ public_menu_url }}</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const products = {{ urunler|tojson }};
+const cart = {};
+
+function render(){
+  let total = 0;
+  const rows = Object.entries(cart).map(([id, qty]) => {
+    const p = products.find(x => String(x.id) === String(id));
+    if (!p) return '';
+    total += (parseFloat(p.fiyat) || 0) * qty;
+    return `<div style="display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid #eee;padding:8px 0;">
+      <div><strong>${p.ad}</strong><div class="small">EN: ${p.ad_en || p.ad}</div><div class="small">AR: ${p.ad_ar || p.ad}</div></div>
+      <div>${qty}</div></div>`;
+  }).join('');
+  document.getElementById('cartArea').innerHTML = rows || 'Sepet boş.';
+  document.getElementById('totalText').textContent = '₺' + total.toFixed(2);
+  const tip = document.getElementById('odeme_tipi').value;
+  if (tip === 'nakit') {
+    document.getElementById('cashBox').style.display = 'block';
+    const cash = parseFloat(document.getElementById('nakit_verilen').value || '0') || 0;
+    document.getElementById('changeRow').style.display = 'flex';
+    document.getElementById('changeText').textContent = '₺' + Math.max(0, cash-total).toFixed(2);
+  } else {
+    document.getElementById('cashBox').style.display = 'none';
+    document.getElementById('changeRow').style.display = 'none';
+  }
+}
+function cashToggle(){
+  document.getElementById('cashHint').style.display = document.getElementById('odeme_tipi').value === 'kart' ? 'block' : 'none';
+  render();
+}
+document.querySelectorAll('.add').forEach(btn => btn.addEventListener('click', () => { const id = btn.dataset.id; cart[id] = (cart[id] || 0) + 1; render(); }));
+document.getElementById('sendBtn').addEventListener('click', async () => {
+  const urunler = Object.entries(cart).map(([urun_id, adet]) => ({urun_id: parseInt(urun_id), adet}));
+  if (!urunler.length) return alert('Sepete ürün ekle.');
+  const payload = {
+    ad_soyad: document.getElementById('ad_soyad').value.trim(),
+    telefon: document.getElementById('telefon').value.trim(),
+    adres: document.getElementById('adres').value.trim(),
+    odeme_tipi: document.getElementById('odeme_tipi').value,
+    notlar: document.getElementById('notlar').value,
+    nakit_verilen: document.getElementById('odeme_tipi').value === 'nakit' ? (parseFloat(document.getElementById('nakit_verilen').value || '0') || 0) : 0,
+    urunler
+  };
+  if (!payload.ad_soyad || !payload.telefon || !payload.adres) return alert('Ad, telefon ve adres gerekli.');
+  const res = await fetch('/api/dis/siparis', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json();
+  if (data.success) {
+    alert('Sipariş alındı.');
+    location.href = '/dis/durum/' + data.siparis_id;
+  } else {
+    alert(data.error || 'İşlem başarısız');
+  }
+});
+render(); cashToggle();
+</script>
+</body>
+</html>

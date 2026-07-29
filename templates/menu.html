@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% block title %}Menü Yönetimi{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><span class="icon"><i class="fas fa-book-open"></i></span> Menü Yönetimi</h1>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+    <div class="card-header">
+        <h3><i class="fas fa-folder-plus"></i> Yeni Kategori</h3>
+    </div>
+    <div class="form-row">
+        <div class="form-group">
+            <label>Kategori Adı</label>
+            <input type="text" id="katAdi" class="form-control" placeholder="Örn: Kahve">
+        </div>
+        <div class="form-group">
+            <label>Renk</label>
+            <input type="text" id="katRenk" class="form-control" value="#4CAF50">
+        </div>
+        <div class="form-group" style="align-self:end;">
+            <button class="btn btn-success" onclick="katEkle()"><i class="fas fa-plus"></i> Kategori Ekle</button>
+        </div>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+    <div class="card-header">
+        <h3><i class="fas fa-box"></i> Yeni Ürün</h3>
+    </div>
+    <div class="form-row">
+        <div class="form-group">
+            <label>Kategori</label>
+            <select id="urunKategori" class="form-control">
+                {% for k in kategoriler %}
+                <option value="{{ k.id }}">{{ k.ad }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Ürün Adı</label>
+            <input type="text" id="urunAdi" class="form-control" placeholder="Örn: Siyah Çay">
+        </div>
+        <div class="form-group">
+            <label>Fiyat</label>
+            <input type="number" id="urunFiyat" class="form-control" step="0.01" value="0">
+        </div>
+        <div class="form-group">
+            <label>Stok</label>
+            <input type="number" id="urunStok" class="form-control" value="0">
+        </div>
+        <div class="form-group">
+            <label>Kritik Stok</label>
+            <input type="number" id="urunKritik" class="form-control" value="5">
+        </div>
+        <div class="form-group" style="grid-column:1 / -1;">
+            <label>Ürün Açıklaması</label>
+            <textarea id="urunAciklama" class="form-control" rows="3" placeholder="TR açıklama..."></textarea>
+        </div>
+        <div class="form-group" style="align-self:end;">
+            <button class="btn btn-success" onclick="urunEkle()"><i class="fas fa-plus"></i> Ürün Ekle</button>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-layer-group"></i> Kategoriler</h3>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr><th>Ad</th><th>EN</th><th>AR</th><th>Renk</th><th>İşlem</th></tr>
+        </thead>
+        <tbody>
+            {% for k in kategoriler %}
+            <tr>
+                <td><strong>{{ k.ad }}</strong></td>
+                <td>{{ k.ad_en or '-' }}</td>
+                <td>{{ k.ad_ar or '-' }}</td>
+                <td><span style="display:inline-block;width:22px;height:22px;border-radius:6px;background:{{ k.renk }}"></span></td>
+                <td>
+                    <button class="btn btn-danger btn-sm" onclick="katSil({{ k.id }}, '{{ k.ad|e }}')"><i class="fas fa-trash"></i> Sil</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="card" style="margin-top:16px;">
+    <div class="card-header">
+        <h3><i class="fas fa-mug-hot"></i> Ürünler</h3>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr><th>Ürün</th><th>EN</th><th>AR</th><th>Kategori</th><th>Fiyat</th><th>Stok</th><th>İşlem</th></tr>
+        </thead>
+        <tbody>
+            {% for u in urunler %}
+            <tr>
+                <td><strong>{{ u.ad }}</strong><br><small>{{ u.aciklama or '' }}</small></td>
+                <td>{{ u.ad_en or '-' }}</td>
+                <td>{{ u.ad_ar or '-' }}</td>
+                <td>{{ u.kategori_ad }}</td>
+                <td>₺{{ '%.2f'|format(u.fiyat) }}</td>
+                <td>{{ u.stok }}</td>
+                <td>
+                    <button class="btn btn-danger btn-sm" onclick="urunSil({{ u.id }}, '{{ u.ad|e }}')"><i class="fas fa-trash"></i> Sil</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+function katEkle() {
+    const data = {
+        ad: document.getElementById('katAdi').value,
+        renk: document.getElementById('katRenk').value
+    };
+    fetch('/api/kategori/ekle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }).then(r => r.json()).then(d => {
+        if (d.success) location.reload();
+        else alert(d.error || 'Kategori eklenemedi');
+    }).catch(() => alert('Hata oluştu'));
+}
+
+function katSil(id, ad) {
+    if (!confirm(ad + ' kategorisi silinsin mi?')) return;
+    fetch('/api/kategori/' + id + '/sil', { method: 'POST' })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) location.reload();
+            else alert('Kategori silinemedi');
+        }).catch(() => alert('Hata oluştu'));
+}
+
+function urunEkle() {
+    const data = {
+        kategori_id: parseInt(document.getElementById('urunKategori').value),
+        ad: document.getElementById('urunAdi').value,
+        fiyat: parseFloat(document.getElementById('urunFiyat').value || '0'),
+        stok: parseInt(document.getElementById('urunStok').value || '0'),
+        kritik_stok: parseInt(document.getElementById('urunKritik').value || '5'),
+        aciklama: document.getElementById('urunAciklama').value
+    };
+    fetch('/api/urun/ekle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }).then(r => r.json()).then(d => {
+        if (d.success) location.reload();
+        else alert(d.error || 'Ürün eklenemedi');
+    }).catch(() => alert('Hata oluştu'));
+}
+
+function urunSil(id, ad) {
+    if (!confirm(ad + ' ürünü silinsin mi?')) return;
+    fetch('/api/urun/' + id + '/sil', { method: 'POST' })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) location.reload();
+            else alert('Ürün silinemedi');
+        }).catch(() => alert('Hata oluştu'));
+}
+</script>
+{% endblock %}

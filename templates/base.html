@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Cay Bahcesi PRO{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .mutfak-bildirim {
+            display: none;
+            animation: blink 1s infinite;
+        }
+        .mutfak-bildirim.active {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, #ff6f00, #ff9800);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 0 10px rgba(255, 111, 0, 0.5);
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.05); }
+        }
+        .mutfak-dot {
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+            animation: pulse 0.8s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    {% if session.user_id %}
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-icon">🍵</div>
+                <h2>CAY BAHCESI PRO</h2>
+                <span class="role-badge">{{ session.role|upper }}</span>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="{{ url_for('dashboard') }}" class="{% if request.endpoint == 'dashboard' %}active{% endif %}">
+                    <span class="icon"><i class="fas fa-chart-line"></i></span> Ana Sayfa
+                </a>
+
+                <a href="/bildirimler" class="{% if request.endpoint == 'bildirimler_paneli' %}active{% endif %}" id="bildirimLink">
+                    <span class="icon"><i class="fas fa-bell"></i></span> Bildirimler
+                </a>
+
+                <a href="{{ url_for('siparis') }}" class="{% if request.endpoint == 'siparis' %}active{% endif %}">
+                    <span class="icon"><i class="fas fa-clipboard-list"></i></span> Siparis Al
+                </a>
+                <a href="{{ url_for('masalar') }}" class="{% if request.endpoint == 'masalar' %}active{% endif %}">
+                    <span class="icon"><i class="fas fa-chair"></i></span> Masalar
+                </a>
+                <a href="{{ url_for('mutfak') }}" class="{% if request.endpoint == 'mutfak' %}active{% endif %}" id="mutfakLink">
+                    <span class="icon"><i class="fas fa-utensils"></i></span> Mutfak
+                    <span class="mutfak-bildirim" id="mutfakBildirim">
+                        <span class="mutfak-dot"></span> YENI SIPARIS
+                    </span>
+                </a>
+                <a href="{{ url_for('kasa') }}" class="{% if request.endpoint == 'kasa' %}active{% endif %}">
+                    <span class="icon"><i class="fas fa-cash-register"></i></span> Kasa
+                </a>
+                <a href="{{ url_for('menu') }}" class="{% if request.endpoint == 'menu' %}active{% endif %}">
+                    <span class="icon"><i class="fas fa-book-open"></i></span> Menu
+                </a>
+                <a href="{{ url_for('stok') }}" class="{% if request.endpoint == 'stok' %}active{% endif %}">
+                    <span class="icon"><i class="fas fa-boxes"></i></span> Stok
+                </a>
+                <a href="{{ url_for('veresiye') }}" class="{% if request.endpoint == 'veresiye' %}active{% endif %}">
+                    <span class="icon"><i class="fas fa-hand-holding-usd"></i></span> Veresiye
+                </a>
+                <a href="{{ url_for('dis_mutfak') }}" class="{% if request.endpoint == 'dis_mutfak' %}active{% endif %}">
+                    <span class="icon"><i class="fas fa-truck-fast"></i></span> Dış Mutfak
+                </a>
+                <a href="{{ url_for('dis_kurye') }}" class="{% if request.endpoint == 'dis_kurye' %}active{% endif %}">
+                    <span class="icon"><i class="fas fa-motorcycle"></i></span> Kurye
+                </a>
+                <a href="{{ url_for('tahsilatlar') }}" class="{% if request.endpoint == 'tahsilatlar' %}active{% endif %}">
+                    <span class="icon"><i class="fas fa-wallet"></i></span> Tahsilatlar
+                </a>
+                <a href="{{ url_for('qr_dis_page') }}" class="{% if request.endpoint == 'qr_dis_page' %}active{% endif %}">
+                    <span class="icon"><i class="fas fa-qrcode"></i></span> Dış QR
+                </a>
+                {% if session.role == 'admin' %}
+                <a href="{{ url_for('garsonlar') }}" class="{% if request.endpoint == 'garsonlar' %}active{% endif %}">
+                    <span class="icon"><i class="fas fa-users"></i></span> Garsonlar
+                </a>
+                <a href="{{ url_for('raporlar') }}" class="{% if request.endpoint == 'raporlar' %}active{% endif %}">
+                    <span class="icon"><i class="fas fa-chart-bar"></i></span> Raporlar
+                </a>
+                <a href="{{ url_for('kasa_defteri') }}" class="{% if request.endpoint == 'kasa_defteri' %}active{% endif %}">
+                    <span class="icon"><i class="fas fa-book"></i></span> Kasa Defteri
+                </a>
+                <a href="{{ url_for('veresiye_defteri') }}" class="{% if request.endpoint == 'veresiye_defteri' %}active{% endif %}">
+                    <span class="icon"><i class="fas fa-file-invoice-dollar"></i></span> Veresiye Defteri
+                </a>
+                <a href="{{ url_for('tedarikciler') }}" class="{% if request.endpoint == 'tedarikciler' %}active{% endif %}">
+                    <span class="icon"><i class="fas fa-truck"></i></span> Tedarikciler
+                </a>
+                <a href="{{ url_for('qr_yazdir') }}" class="{% if request.endpoint == 'qr_yazdir' %}active{% endif %}">
+                    <span class="icon"><i class="fas fa-qrcode"></i></span> QR Kodlar
+                </a>
+                <a href="{{ url_for('ayarlar') }}" class="{% if request.endpoint == 'ayarlar' %}active{% endif %}">
+                    <span class="icon"><i class="fas fa-cog"></i></span> Ayarlar
+                </a>
+                {% endif %}
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar">{{ session.ad_soyad[:1] if session.ad_soyad else session.username[:1] }}</div>
+                    <div>
+                        <div class="user-name">{{ session.ad_soyad or session.username }}</div>
+                        <div class="user-role">{{ session.role|capitalize }}</div>
+                    </div>
+                </div>
+                <a href="{{ url_for('logout') }}" class="btn-logout">
+                    <i class="fas fa-sign-out-alt"></i> Cikis Yap
+                </a>
+            </div>
+        </aside>
+        <main class="main-content">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            <i class="fas fa-info-circle"></i> {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <script>
+    function mutfakBildirimKontrol() {
+        fetch('/api/mutfak/bildirim')
+            .then(r => r.json())
+            .then(data => {
+                const bildirim = document.getElementById('mutfakBildirim');
+                if (data.bekleyen > 0) {
+                    bildirim.classList.add('active');
+                    bildirim.innerHTML = '<span class="mutfak-dot"></span> YENI SIPARIS (' + data.bekleyen + ')';
+                } else {
+                    bildirim.classList.remove('active');
+                    bildirim.innerHTML = '<span class="mutfak-dot"></span> YENI SIPARIS';
+                }
+            })
+            .catch(() => {});
+    }
+    mutfakBildirimKontrol();
+    setInterval(mutfakBildirimKontrol, 5000);
+
+    function musteriBildirimKontrol() {
+        fetch('/api/bildirimler')
+            .then(r => r.json())
+            .then(data => {
+                const link = document.getElementById('bildirimLink');
+                if (!link) return;
+                let badge = link.querySelector('.musteri-bildirim');
+                if ((data.bildirimler || []).length > 0) {
+                    if (!badge) {
+                        badge = document.createElement('span');
+                        badge.className = 'mutfak-bildirim active musteri-bildirim';
+                        link.appendChild(badge);
+                    }
+                    badge.innerHTML = '<span class="mutfak-dot"></span> BILDIRIM (' + data.bildirimler.length + ')';
+                    badge.classList.add('active');
+                } else if (badge) {
+                    badge.remove();
+                }
+            })
+            .catch(() => {});
+    }
+    musteriBildirimKontrol();
+    setInterval(musteriBildirimKontrol, 10000);
+    </script>
+    {% else %}
+        {% block login_content %}{% endblock %}
+    {% endif %}
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

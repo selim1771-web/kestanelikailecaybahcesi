@@ -1,0 +1,5 @@
+<!-- SIDEBAR'A EKLE -->
+<a href="/bildirimler" class="nav-item">
+    <span class="nav-icon">🔔</span>
+    <span>Bildirimler</span>
+</a>

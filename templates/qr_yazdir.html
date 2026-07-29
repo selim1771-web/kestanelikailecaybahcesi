@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}QR Kod Yazdır - {{ settings.isletme_adi }}{% endblock %}
+{% block content %}
+<div class="page-header no-print">
+    <h1><span class="icon"><i class="fas fa-qrcode"></i></span> QR Kod Yazdırma</h1>
+    <div>
+        <button class="btn btn-primary" onclick="window.print()">
+            <i class="fas fa-print"></i> Yazdır
+        </button>
+        <a href="{{ url_for('masalar') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Geri
+        </a>
+    </div>
+</div>
+
+<div class="card no-print" style="margin-bottom: 20px;">
+    <div class="form-row">
+        <div class="form-group" style="grid-column: 1 / -1;">
+            <label><i class="fas fa-info-circle"></i> Bilgi</label>
+            <p style="color:var(--gray); font-size:14px;">
+                Aşağıdaki QR kodları yazdırıp masalara yerleştirin. Müşteriler telefonlarıyla okutarak menüye erişebilir.
+                <strong>Sunucu adresi:</strong> {{ host_url }}
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="qr-yazdir-grid" id="qrGrid">
+    {% for m in masalar %}
+    <div class="qr-kart">
+        <div class="qr-isletme">{{ settings.isletme_adi }}</div>
+        <div class="qr-masa">{{ m.masa_no }}</div>
+        <div class="qr-kod-alan" id="qr_{{ m.id }}"></div>
+        <div class="qr-aciklama">
+            Telefonunuzla okutun<br>
+            <small>{{ host_url }}/m/{{ m.qr_uuid }}</small>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+{% for m in masalar %}
+    new QRCode(document.getElementById('qr_{{ m.id }}'), {
+        text: "{{ host_url }}/m/{{ m.qr_uuid }}",
+        width: 130,
+        height: 130,
+        colorDark: "#1a237e",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.M
+    });
+{% endfor %}
+</script>
+{% endblock %}

@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Raporlar - Çay Bahçesi PRO{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><span class="icon"><i class="fas fa-chart-bar"></i></span> Raporlar</h1>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-filter"></i> Filtrele</h3>
+    </div>
+    <form method="GET" action="{{ url_for('raporlar') }}" class="tarih-filter">
+        <label>Başlangıç:</label>
+        <input type="date" name="baslangic" value="{{ baslangic }}">
+        <label>Bitiş:</label>
+        <input type="date" name="bitis" value="{{ bitis }}">
+        <label>Garson:</label>
+        <select name="garson_id" class="form-control" style="width:auto;">
+            <option value="">Tüm Garsonlar</option>
+            {% for g in garsonlar %}
+            <option value="{{ g.id }}" {% if garson_id == g.id|string %}selected{% endif %}>{{ g.ad_soyad }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-primary btn-sm">
+            <i class="fas fa-search"></i> Filtrele
+        </button>
+        <a href="{{ url_for('raporlar') }}" class="btn btn-secondary btn-sm">
+            <i class="fas fa-undo"></i> Sıfırla
+        </a>
+    </form>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card accent">
+        <div class="stat-icon"><i class="fas fa-lira-sign"></i></div>
+        <div class="stat-value">₺{{ "%.2f"|format(toplam_gelir) }}</div>
+        <div class="stat-label">Toplam Gelir</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-calendar-day"></i> Günlük Satış Özeti</h3>
+    </div>
+    <table class="data-table">
+        <thead><tr><th>Tarih</th><th>Sipariş Sayısı</th><th>Toplam Tutar</th></tr></thead>
+        <tbody>
+            {% for g in gunluk_satis %}
+            <tr>
+                <td><strong>{{ g.gun }}</strong></td>
+                <td>{{ g.adet }}</td>
+                <td style="color:var(--accent); font-weight:700;">₺{{ "%.2f"|format(g.toplam) }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3" style="text-align:center; color:var(--gray);">Veri bulunmuyor.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-fire"></i> Popüler Ürünler</h3>
+    </div>
+    <table class="data-table">
+        <thead><tr><th>Ürün</th><th>Satış Adedi</th><th>Toplam Tutar</th></tr></thead>
+        <tbody>
+            {% for p in populer_urunler %}
+            <tr>
+                <td><strong>{{ p.ad }}</strong></td>
+                <td>{{ p.adet }}</td>
+                <td style="color:var(--accent); font-weight:700;">₺{{ "%.2f"|format(p.toplam) }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3" style="text-align:center; color:var(--gray);">Veri bulunmuyor.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-users"></i> Garson Performansı</h3>
+    </div>
+    <table class="data-table">
+        <thead><tr><th>Garson</th><th>Sipariş Sayısı</th><th>Toplam Satış</th><th>Ortalama</th></tr></thead>
+        <tbody>
+            {% for g in garson_performans %}
+            <tr>
+                <td><strong>{{ g.ad_soyad }}</strong></td>
+                <td>{{ g.siparis_sayisi }}</td>
+                <td style="color:var(--accent); font-weight:700;">₺{{ "%.2f"|format(g.toplam_satis) }}</td>
+                <td>₺{{ "%.2f"|format(g.ortalama) }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" style="text-align:center; color:var(--gray);">Veri bulunmuyor.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-list-alt"></i> Detaylı Sipariş Raporu</h3>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr><th>Tarih</th><th>Masa</th><th>Garson</th><th>Tutar</th><th>Ödeme</th></tr>
+        </thead>
+        <tbody>
+            {% for s in detayli_siparis %}
+            <tr>
+                <td>{{ s.tarih }}</td>
+                <td><strong>{{ s.masa_no }}</strong></td>
+                <td>{{ s.garson_adi }}</td>
+                <td style="color:var(--accent); font-weight:700;">₺{{ "%.2f"|format(s.tutar) }}</td>
+                <td><span class="badge badge-primary">{{ s.odeme_tipi|capitalize }}</span></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" style="text-align:center; color:var(--gray);">Veri bulunmuyor.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

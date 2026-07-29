@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Cay Bahcesi PRO v10.0 - Kullanim Kilavuzu</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 900px; margin: 0 auto; padding: 40px; }
+        h1 { color: #1a237e; border-bottom: 3px solid #ff6f00; padding-bottom: 10px; }
+        h2 { color: #1a237e; margin-top: 30px; border-left: 4px solid #ff6f00; padding-left: 12px; }
+        h3 { color: #3949ab; margin-top: 20px; }
+        .info-box { background: #e8eaf6; border-left: 4px solid #3949ab; padding: 15px; margin: 15px 0; border-radius: 4px; }
+        .warning-box { background: #fff3e0; border-left: 4px solid #ff6f00; padding: 15px; margin: 15px 0; border-radius: 4px; }
+        .step { background: #f5f5f5; padding: 12px; margin: 8px 0; border-radius: 4px; }
+        .step-number { display: inline-block; background: #1a237e; color: white; width: 28px; height: 28px; text-align: center; line-height: 28px; border-radius: 50%; margin-right: 10px; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        th { background: #1a237e; color: white; padding: 10px; text-align: left; }
+        td { padding: 10px; border-bottom: 1px solid #ddd; }
+        tr:nth-child(even) { background: #f5f5f5; }
+        code { background: #e8eaf6; padding: 2px 6px; border-radius: 3px; font-family: monospace; }
+        .footer { margin-top: 40px; padding-top: 20px; border-top: 2px solid #1a237e; text-align: center; color: #666; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h1>🍵 CAY BAHÇESİ PRO v10.0</h1>
+    <p style="font-size: 18px; color: #666;">Profesyonel Restaurant POS ve Muhasebe Sistemi - Kullanım Kılavuzu</p>
+
+    <div class="info-box">
+        <strong>Varsayılan Giriş:</strong> Kullanıcı: <code>admin</code> | Şifre: <code>admin123</code><br>
+        <strong>Şifreler:</strong> Program klasöründe <code>sifreler.md</code> dosyasına otomatik kaydedilir.<br>
+        <strong>Ağ Erişimi:</strong> Garsonlar <code>http://[MERKEZ-BILGISAYAR-IP]:8000</code> adresinden bağlanabilir.
+    </div>
+
+    <h2>📦 Kurulum Adımları</h2>
+    <div class="step"><span class="step-number">1</span>ZIP dosyasını bir klasöre çıkarın.</div>
+    <div class="step"><span class="step-number">2</span><code>BASLAT.bat</code> veya <code>MANUEL.bat</code> dosyasına çift tıklayın.</div>
+    <div class="step"><span class="step-number">3</span>Flask kurulu değilse otomatik kurulacaktır.</div>
+    <div class="step"><span class="step-number">4</span>Tarayıcıda <code>http://localhost:8000</code> açın.</div>
+    <div class="step"><span class="step-number">5</span><code>admin / admin123</code> ile giriş yapın.</div>
+
+    <h2>🔐 Giriş ve Roller</h2>
+    <table>
+        <tr><th>Rol</th><th>Yetkiler</th></tr>
+        <tr><td><strong>Yönetici (Admin)</strong></td><td>Tüm modüllere erişim: Kasa Defteri, Veresiye Defteri, Tedarikçiler, Raporlar, Ayarlar, Garson Yönetimi</td></tr>
+        <tr><td><strong>Garson</strong></td><td>Sipariş alma, Masalar, Mutfak görüntüleme, Kasa (sadece görüntüleme)</td></tr>
+    </table>
+
+    <h2>📝 Sipariş Alma</h2>
+    <div class="step"><span class="step-number">1</span><strong>Sipariş Al</strong> menüsüne tıklayın.</div>
+    <div class="step"><span class="step-number">2</span>Masa seçin (boş veya dolu fark etmez).</div>
+    <div class="step"><span class="step-number">3</span>Dolu masada mevcut siparişler turuncu kutuda görünür.</div>
+    <div class="step"><span class="step-number">4</span>Kategori butonlarından kategori seçin.</div>
+    <div class="step"><span class="step-number">5</span>Ürün kartlarına tıklayarak sepete ekleyin.</div>
+    <div class="step"><span class="step-number">6</span>Adeti artırın/azaltın (+ / − butonları).</div>
+    <div class="step"><span class="step-number">7</span>Not ekleyin (opsiyonel).</div>
+    <div class="step"><span class="step-number">8</span><strong>Siparişi Gönder</strong> butonuna tıklayın.</div>
+
+    <div class="warning-box">
+        <strong>İpucu:</strong> Dolu masaya yeni sipariş ekleyebilirsiniz. Mevcut siparişler korunur, yeni ürünler üstüne eklenir.
+    </div>
+
+    <h2>🪑 Masalar ve Ödeme</h2>
+    <div class="step"><span class="step-number">1</span><strong>Masalar</strong> menüsüne tıklayın.</div>
+    <div class="step"><span class="step-number">2</span>Dolu masaya (kırmızı kenarlı) tıklayın.</div>
+    <div class="step"><span class="step-number">3</span>Sipariş fişi görünür.</div>
+    <div class="step"><span class="step-number">4</span>Ödeme tipi seçin:
+        <ul>
+            <li><strong>Nakit:</strong> Tek tıkla ödeme alınır.</li>
+            <li><strong>Kredi Kartı:</strong> Tek tıkla ödeme alınır.</li>
+            <li><strong>Veresiye:</strong> Mevcut müşteri seçin veya <strong>Yeni Müşteri</strong> ekleyin.</li>
+        </ul>
+    </div>
+    <div class="step"><span class="step-number">5</span><strong>Masa Aktar:</strong> Müşteri masaya geçmek isterse, boş masa seçip Aktar butonuna basın.</div>
+    <div class="step"><span class="step-number">6</span><strong>Fiş Gör:</strong> Yazdırılabilir fişi açar (işletme bilgileri + garson adı + iyi niyet mesajı).</div>
+
+    <h2>👨‍🍳 Mutfak Ekranı</h2>
+    <div class="step"><span class="step-number">1</span>Siparişler <strong>en yeni üstte</strong> görünür.</div>
+    <div class="step"><span class="step-number">2</span>Her masa bir kart olarak gruplanır.</div>
+    <div class="step"><span class="step-number">3</span>Sipariş fişinin bütünü (tüm ürünler) tabloda görünür.</div>
+    <div class="step"><span class="step-number">4</span><strong>Hazırlanıyor</strong> → <strong>Hazır</strong> butonları ile durum güncellenir.</div>
+    <div class="step"><span class="step-number">5</span>Tüm ürünler hazırlandığında <strong>GÖNDERİLDİ</strong> butonuna basılır.</div>
+    <div class="step"><span class="step-number">6</span>Ekran 15 saniyede bir otomatik yenilenir.</div>
+
+    <div class="warning-box">
+        <strong>Bildirim Işığı:</strong> Yeni sipariş geldiğinde sidebar'da "Mutfak" yanında yanıp sönen turuncu ışık belirir: <code>🔴 YENİ SİPARİŞ (3)</code>. Tüm siparişler teslim edilince ışık söner.
+    </div>
+
+    <h2>💰 Kasa ve Kasa Defteri</h2>
+    <h3>Günlük Kasa</h3>
+    <div class="step"><span class="step-number">1</span><strong>Kasa</strong> menüsünde tarih aralığı seçin.</div>
+    <div class="step"><span class="step-number">2</span>Gelir/gider/ödeme tipi özetleri görünür.</div>
+    <div class="step"><span class="step-number">3</span>Yönetici gider ekleyebilir.</div>
+
+    <h3>Kasa Defteri (Muhasebe)</h3>
+    <div class="step"><span class="step-number">1</span><strong>Kasa Defteri</strong> menüsüne tıklayın (sadece admin).</div>
+    <div class="step"><span class="step-number">2</span>Tarih aralığı seçin, tüm hareketler listelenir.</div>
+    <div class="step"><span class="step-number">3</span><strong>Yeni Kayıt</strong> ile manuel gelir/gider girişi yapın.</div>
+    <div class="step"><span class="step-number">4</span><strong>Günlük Kasa Kapanışı</strong> yapın → Ertesi gün açılış bakiyesi otomatik hesaplanır.</div>
+
+    <table>
+        <tr><th>Kolon</th><th>Açıklama</th></tr>
+        <tr><td>Tarih</td><td>İşlem tarihi</td></tr>
+        <tr><td>Belge No</td><td>Fatura/fiş numarası</td></tr>
+        <tr><td>Açıklama</td><td>İşlem açıklaması</td></tr>
+        <tr><td>Kategori</td><td>Satış, Gider, Maaş, Kira, Diğer</td></tr>
+        <tr><td>Gelir</td><td>Para girişi</td></tr>
+        <tr><td>Gider</td><td>Para çıkışı</td></tr>
+        <tr><td>Ödeme</td><td>Nakit, Kredi Kartı, Havale</td></tr>
+    </table>
+
+    <h2>📋 Veresiye ve Veresiye Defteri</h2>
+    <h3>Veresiye Takibi</h3>
+    <div class="step"><span class="step-number">1</span><strong>Veresiye</strong> menüsünde müşteriler listelenir.</div>
+    <div class="step"><span class="step-number">2</span><strong>Yeni Müşteri</strong> ekleyin.</div>
+    <div class="step"><span class="step-number">3</span><strong>Tahsilat</strong> butonu ile ödeme alın.</div>
+    <div class="step"><span class="step-number">4</span><strong>Hareketler</strong> butonu ile geçmiş görünür.</div>
+
+    <h3>Veresiye Defteri (Detaylı)</h3>
+    <div class="step"><span class="step-number">1</span><strong>Veresiye Defteri</strong> menüsüne tıklayın (sadece admin).</div>
+    <div class="step"><span class="step-number">2</span>Müşteri listesi ve bakiyeler görünür.</div>
+    <div class="step"><span class="step-number">3</span><strong>Detaylı Döküm</strong> butonuna tıklayın.</div>
+    <div class="step"><span class="step-number">4</span>Müşterinin <strong>ne yediği, ne içtiği</strong> (ürün detayı) ile birlikte tüm hareketler kronolojik olarak görünür.</div>
+    <div class="step"><span class="step-number">5</span>Her satırda anlık bakiye hesaplanır.</div>
+
+    <h2>🚚 Tedarikçi / Cari Hesaplar</h2>
+    <div class="step"><span class="step-number">1</span><strong>Tedarikçiler</strong> menüsüne tıklayın (sadece admin).</div>
+    <div class="step"><span class="step-number">2</span><strong>Yeni Tedarikçi</strong> ekleyin (firma adı, yetkili, vergi bilgileri, adres).</div>
+    <div class="step"><span class="step-number">3</span><strong>Detay</strong> butonu ile cari hesap görünür.</div>
+    <div class="step"><span class="step-number">4</span><strong>Yeni Hareket</strong> ile borç (alılan mal) veya ödeme girişi yapın.</div>
+    <div class="step"><span class="step-number">5</span>Tüm hareketler kronolojik olarak bakiye ile birlikte görünür.</div>
+
+    <table>
+        <tr><th>İşlem</th><th>Açıklama</th></tr>
+        <tr><td>Borç</td><td>Firmadan alınan malın değeri (borçlanma)</td></tr>
+        <tr><td>Ödeme</td><td>Firmaya yapılan ödeme</td></tr>
+        <tr><td>Bakiye</td><td>Borç - Ödeme (kalan borç)</td></tr>
+    </table>
+
+    <h2>📊 Raporlar</h2>
+    <div class="step"><span class="step-number">1</span><strong>Raporlar</strong> menüsüne tıklayın (sadece admin).</div>
+    <div class="step"><span class="step-number">2</span>Tarih aralığı seçin (sınırsız).</div>
+    <div class="step"><span class="step-number">3</span>Garson filtresi kullanın (opsiyonel).</div>
+    <div class="step"><span class="step-number">4</span>Raporlar:
+        <ul>
+            <li><strong>Günlük Satış Özeti:</strong> Günlük toplam</li>
+            <li><strong>Popüler Ürünler:</strong> En çok satanlar</li>
+            <li><strong>Garson Performansı:</strong> Sipariş sayısı, toplam satış, ortalama</li>
+            <li><strong>Detaylı Sipariş Raporu:</strong> Tarih, masa, garson, tutar, ödeme tipi</li>
+        </ul>
+    </div>
+
+    <h2>⚙️ Ayarlar</h2>
+    <div class="step"><span class="step-number">1</span><strong>Ayarlar</strong> menüsüne tıklayın (sadece admin).</div>
+    <div class="step"><span class="step-number">2</span><strong>İşletme Bilgileri:</strong> Ad, vergi, telefon, adres, fiş iyi niyet mesajı.</div>
+    <div class="step"><span class="step-number">3</span><strong>Kat ve Masa Yönetimi:</strong> Yeni kat ekle/sil, her kat için masa sayısı.</div>
+    <div class="step"><span class="step-number">4</span><strong>Şifre Yönetimi:</strong> Şifre değiştirme, otomatik <code>sifreler.md</code> güncellenir.</div>
+
+    <h2>🧾 Fiş Formatı</h2>
+    <div class="info-box">
+        Fişte görünen bilgiler:<br>
+        • İşletme Adı<br>
+        • Adres, Telefon<br>
+        • Vergi Dairesi, Vergi No<br>
+        • Masa No ve Tarih<br>
+        • Ürünler: <code>Adet x Birim Fiyat = Tutar</code> (örn: 5 x 25.00 = 125.00)<br>
+        • Toplam Tutar<br>
+        • Garson Adı<br>
+        • İyi Niyet Mesajı
+    </div>
+
+    <h2>🔧 Sorun Giderme</h2>
+    <table>
+        <tr><th>Sorun</th><th>Çözüm</th></tr>
+        <tr><td>Python bulunamadı</td><td><code>python --version</code> kontrol edin, PATH'e ekleyin veya tam yolu kullanın.</td></tr>
+        <tr><td>Flask hatası</td><td><code>python -m pip install flask</code> komutunu çalıştırın.</td></tr>
+        <tr><td>Port kullanımda</td><td><code>app.py</code> içinde port değiştirin (örn: 8000 → 5000).</td></tr>
+        <tr><td>Veritabanı hatası</td><td><code>cay_bahcesi.db</code> dosyasını silip yeniden başlatın.</td></tr>
+        <tr><td>500 hatası</td><td>Debug modu açık, CMD ekranındaki kırmızı yazıları bana atın.</td></tr>
+    </table>
+
+    <h2>📞 Destek</h2>
+    <div class="info-box">
+        Herhangi bir sorun veya öneri için program geliştiricinize başvurun.<br>
+        <strong>Çay Bahçesi PRO v10.0</strong> - Profesyonel Restaurant Yönetim Sistemi
+    </div>
+
+    <div class="footer">
+        <p>🍵 Çay Bahçesi PRO v10.0 | Kullanım Kılavuzu</p>
+        <p>Bu kılavuz programın en güncel sürümü için hazırlanmıştır.</p>
+    </div>
+</body>
+</html>
