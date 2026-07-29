@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Menü · Çok Dilli{% endblock %}
+{% block content %}
+<div class="page-header" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px;">
+  <div>
+    <h1 style="margin:0;">Menü</h1>
+    <div style="opacity:.75;">Türkçe · English · العربية</div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr;gap:14px;">
+  {% for k in kategoriler %}
+    <div class="card" style="padding:16px;border-radius:18px;background:#fff;box-shadow:0 10px 30px rgba(0,0,0,.05);">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;">
+        <div>
+          <h2 style="margin:0 0 4px;">{{ k.ad }}</h2>
+          <div style="font-size:13px;opacity:.75;">EN: {{ k.ad_en or k.ad }} · AR: {{ k.ad_ar or k.ad }}</div>
+        </div>
+        <div style="padding:6px 10px;border-radius:999px;background:{{ k.renk or '#eef2ff' }};color:#fff;font-weight:700;font-size:12px;">Kategori</div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:14px;">
+        {% for u in urunler if u.kategori_id == k.id %}
+          <div style="border:1px solid #e5e7eb;border-radius:16px;padding:14px;background:#fafafa;">
+            <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
+              <div>
+                <div style="font-weight:800;font-size:17px;">{{ u.ad }}</div>
+                <div style="font-size:13px;opacity:.75;">EN: {{ u.ad_en or u.ad }}</div>
+                <div style="font-size:13px;opacity:.75;">AR: {{ u.ad_ar or u.ad }}</div>
+              </div>
+              <div style="font-weight:900;">₺{{ '%.2f'|format(u.fiyat) }}</div>
+            </div>
+            <div style="margin-top:10px;font-size:13px;line-height:1.5;">
+              <div><strong>TR:</strong> {{ u.aciklama or '-' }}</div>
+              <div><strong>EN:</strong> {{ u.aciklama_en or u.aciklama or '-' }}</div>
+              <div><strong>AR:</strong> {{ u.aciklama_ar or u.aciklama or '-' }}</div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}
